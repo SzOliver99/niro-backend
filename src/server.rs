@@ -6,12 +6,7 @@ use env_logger::Env;
 
 use crate::scopes;
 
-pub struct WebData {
-    pub auth_secret: String,
-}
-
 pub struct Server;
-
 impl Server {
     pub async fn run(port: u16) -> std::io::Result<()> {
         // Initialize logger if -log flag is passed
@@ -35,6 +30,7 @@ impl Server {
                 .wrap(cors)
                 .wrap(Logger::default())
                 .service(scopes::user::user_scope())
+                .service(scopes::customer::customer_scope())
         })
         .bind(("0.0.0.0", port))?
         .run()

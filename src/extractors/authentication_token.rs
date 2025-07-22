@@ -1,6 +1,6 @@
 use actix_web::{
     Error as ActixWebError, FromRequest, HttpRequest, dev::Payload, error::ErrorUnauthorized,
-    http::header::HeaderValue, web,
+    http::header::HeaderValue,
 };
 use jsonwebtoken::{
     Algorithm, DecodingKey, TokenData, Validation, decode, errors::Error as JwtError,

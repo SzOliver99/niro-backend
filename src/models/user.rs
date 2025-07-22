@@ -6,6 +6,7 @@ use sqlx::{FromRow, prelude::Type};
 
 use crate::{
     database::Database,
+    models::customer::Customer,
     utils::{jwt::generate_jwt_token, password_hashing},
 };
 
@@ -82,17 +83,46 @@ impl User {
             )
             .await)
         } else {
-            Err(anyhow::anyhow!("A jelszó érvénytelen"))
+            Err(anyhow::anyhow!("Incorrect password"))
         }
+    }
+
+    pub async fn get_customers_by_id(db: &Database, user_id: i32) -> Result<Vec<Customer>> {
+        if !Self::is_user_exists_by_id(db, user_id).await? {
+            return Err(anyhow::anyhow!("User not exists"));
+        }
+
+        let customers = sqlx::query_as!(
+            Customer,
+            "SELECT * FROM customers WHERE user_id = $1",
+            user_id
+        )
+        .fetch_all(&db.pool)
+        .await?;
+
+        Ok(customers)
     }
 }
 
 impl User {
     async fn is_user_exists(db: &Database, user: &User) -> Result<bool> {
         let is_exists = sqlx::query!(
-            "SELECT id from users WHERE email = $1 OR username = $2",
+            "SELECT id from users
+             WHERE email = $1 OR username = $2",
             user.email,
             user.username
+        )
+        .fetch_optional(&db.pool)
+        .await?;
+
+        Ok(is_exists.is_some())
+    }
+
+    async fn is_user_exists_by_id(db: &Database, user_id: i32) -> Result<bool> {
+        let is_exists = sqlx::query!(
+            "SELECT id from users
+             WHERE id = $1",
+            user_id
         )
         .fetch_optional(&db.pool)
         .await?;

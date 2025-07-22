@@ -11,13 +11,13 @@ pub fn user_scope() -> Scope {
 }
 
 #[derive(Deserialize)]
-struct UserInfoJson {
+struct UserJson {
     email: Option<String>,
     username: Option<String>,
     password: Option<String>,
 }
 
-async fn create_user(data: web::Json<UserInfoJson>) -> impl Responder {
+async fn create_user(data: web::Json<UserJson>) -> impl Responder {
     let db = Database::create_connection().await.unwrap();
     let user = User {
         id: None,
@@ -33,7 +33,7 @@ async fn create_user(data: web::Json<UserInfoJson>) -> impl Responder {
     }
 }
 
-async fn sign_in_via_username(data: web::Json<UserInfoJson>) -> impl Responder {
+async fn sign_in_via_username(data: web::Json<UserJson>) -> impl Responder {
     let db = Database::create_connection().await.unwrap();
     let user = User {
         id: None,
