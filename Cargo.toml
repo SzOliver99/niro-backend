@@ -1,0 +1,28 @@
+[package]
+name = "niro-backend"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+actix = "0.13.5"
+actix-cors = "0.7.1"
+actix-web = "4.11.0"
+anyhow = "1.0.98"
+argon2 = "0.5.3"
+chrono = { version = "0.4.41", features = ["serde"] }
+dotenvy = "0.15.7"
+env_logger = "0.11.8"
+jsonwebtoken = "9.3.1"
+serde = "1.0.219"
+sqlx = { version = "0.8.6", features = ["derive", "runtime-tokio-rustls", "chrono", "postgres"] }
+
+
+[profile.dev]
+incremental = true
+
+[profile.release]
+codegen-units = 1 # Allows LLVM to perform better optimization.
+lto = true        # Enables link-time-optimizations.
+opt-level = "s"   # Prioritizes small binary size. Use `3` if you prefer speed.
+panic = "abort"   # Higher performance by disabling panic handlers.
+strip = true      # Ensures debug symbols are removed.
