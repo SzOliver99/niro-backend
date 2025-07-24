@@ -6,7 +6,7 @@ use sqlx::{FromRow, prelude::Type};
 
 use crate::{
     database::Database,
-    models::customer::Customer,
+    models::contact::Contact,
     utils::{jwt::generate_jwt_token, password_hashing},
 };
 
@@ -15,22 +15,24 @@ pub struct User {
     pub id: Option<i32>,
     pub email: Option<String>,
     pub username: Option<String>,
+    pub full_name: Option<String>,
     pub password: Option<String>,
-    pub group: Option<UserGroup>,
+    pub user_group: Option<UserGroup>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Type)]
-#[sqlx(type_name = "text")]
 pub enum UserGroup {
-    User,
+    Agent,
     Admin,
+    Master,
 }
 
-impl From<&str> for UserGroup {
-    fn from(value: &str) -> Self {
-        match value {
+impl From<String> for UserGroup {
+    fn from(value: String) -> Self {
+        match value.as_str() {
+            "Master" => UserGroup::Master,
             "Admin" => UserGroup::Admin,
-            _ => UserGroup::User,
+            _ => UserGroup::Agent,
         }
     }
 }
@@ -38,7 +40,7 @@ impl From<&str> for UserGroup {
 impl User {
     pub async fn new(db: &Database, new_user: User) -> Result<()> {
         // Check for required fields
-        if new_user.email.is_none() || new_user.username.is_none() || new_user.password.is_none() {
+        if new_user.email.is_none() || new_user.full_name.is_none() || new_user.password.is_none() {
             return Err(anyhow::anyhow!(
                 "All fields (email, username, password) are required"
             ));
@@ -53,9 +55,10 @@ impl User {
         let hashed_password = password_hashing::hash_password(&new_user.password.unwrap());
 
         let _user_id = sqlx::query!(
-            "INSERT INTO users(email, username, password) VALUES($1, $2, $3) RETURNING id",
+            "INSERT INTO users(email, username, full_name, password) VALUES($1, $2, $3, $4) RETURNING id",
             new_user.email,
             new_user.username,
+            new_user.full_name,
             hashed_password
         )
         .fetch_one(&db.pool)
@@ -66,7 +69,7 @@ impl User {
 
     pub async fn sign_in_via_username(db: &Database, user: User) -> Result<String> {
         let user_data = sqlx::query!(
-            r#"SELECT id, password FROM users WHERE username = $1"#,
+            "SELECT id, username, password FROM users WHERE username = $1",
             user.username
         )
         .fetch_optional(&db.pool)
@@ -87,20 +90,36 @@ impl User {
         }
     }
 
-    pub async fn get_customers_by_id(db: &Database, user_id: i32) -> Result<Vec<Customer>> {
+    pub async fn is_any_permission(db: &Database, user_id: i32) -> Result<bool> {
         if !Self::is_user_exists_by_id(db, user_id).await? {
             return Err(anyhow::anyhow!("User not exists"));
         }
 
-        let customers = sqlx::query_as!(
-            Customer,
-            "SELECT * FROM customers WHERE user_id = $1",
+        let user_role = sqlx::query!("SELECT user_group FROM users WHERE id = $1", user_id)
+            .fetch_one(&db.pool)
+            .await?;
+
+        match UserGroup::from(user_role.user_group) {
+            UserGroup::Master => Ok(true),
+            UserGroup::Admin => Ok(true),
+            _ => Ok(false),
+        }
+    }
+
+    pub async fn get_contacts_by_id(db: &Database, user_id: i32) -> Result<Vec<Contact>> {
+        if !Self::is_user_exists_by_id(db, user_id).await? {
+            return Err(anyhow::anyhow!("User not exists"));
+        }
+
+        let contacts = sqlx::query_as!(
+            Contact,
+            "SELECT * FROM contacts WHERE user_id = $1",
             user_id
         )
         .fetch_all(&db.pool)
         .await?;
 
-        Ok(customers)
+        Ok(contacts)
     }
 }
 

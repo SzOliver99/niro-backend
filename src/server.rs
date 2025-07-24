@@ -16,7 +16,7 @@ impl Server {
 
         HttpServer::new(move || {
             let cors = Cors::default()
-                // .allowed_origin("https://localhost")
+                // .allowed_origin("http://localhost")
                 .allow_any_origin()
                 .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
                 .allowed_headers(vec![
@@ -30,7 +30,7 @@ impl Server {
                 .wrap(cors)
                 .wrap(Logger::default())
                 .service(scopes::user::user_scope())
-                .service(scopes::customer::customer_scope())
+                .service(scopes::contact::contact_scope())
         })
         .bind(("0.0.0.0", port))?
         .run()

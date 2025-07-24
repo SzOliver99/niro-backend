@@ -1,12 +1,9 @@
 -- Add migration script here
-
--- DROP TYPE IF EXISTS user_group;
--- CREATE TYPE user_group as ENUM('User', 'Admin');
-
 CREATE TABLE IF NOT EXISTS users(
     id SERIAL PRIMARY KEY,
-    email TEXT NOT NULL,
-    username TEXT NOT NULL,
-    password TEXT NOT NULL,
-    "group" user_group NOT NULL DEFAULT 'User'
+    email VARCHAR(254) UNIQUE NOT NULL,
+    username VARCHAR(254) UNIQUE NOT NULL,
+    full_name TEXT NOT NULL,
+    password VARCHAR(254) UNIQUE NOT NULL,
+    user_group VARCHAR(10) NOT NULL DEFAULT 'Agent'
 )
