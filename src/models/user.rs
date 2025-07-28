@@ -17,6 +17,7 @@ pub struct User {
     pub username: Option<String>,
     pub full_name: Option<String>,
     pub password: Option<String>,
+    pub first_login: Option<bool>,
     pub user_group: Option<UserGroup>,
 }
 

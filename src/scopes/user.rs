@@ -31,6 +31,7 @@ async fn create_user(data: web::Json<UserJson>) -> impl Responder {
         username: data.username.clone(),
         full_name: data.full_name.clone(),
         password: data.password.clone(),
+        first_login: None,
         user_group: None,
     };
     println!("{:?}", data);
@@ -49,6 +50,7 @@ async fn sign_in_via_username(data: web::Json<UserJson>) -> impl Responder {
         username: data.username.clone(),
         full_name: None,
         password: data.password.clone(),
+        first_login: None,
         user_group: None,
     };
 
