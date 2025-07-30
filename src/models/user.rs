@@ -23,16 +23,16 @@ pub struct User {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Type)]
 pub enum UserGroup {
-    Agent,
-    Admin,
-    Master,
+    Agent,   // Üzletkötő
+    Manager, // Menedzser
+    Leader,  // Hálózati igazgató
 }
 
 impl From<String> for UserGroup {
     fn from(value: String) -> Self {
         match value.as_str() {
-            "Master" => UserGroup::Master,
-            "Admin" => UserGroup::Admin,
+            "Leader" => UserGroup::Leader,
+            "Manager" => UserGroup::Manager,
             _ => UserGroup::Agent,
         }
     }
@@ -101,8 +101,8 @@ impl User {
             .await?;
 
         match UserGroup::from(user_role.user_group) {
-            UserGroup::Master => Ok(true),
-            UserGroup::Admin => Ok(true),
+            UserGroup::Leader => Ok(true),
+            UserGroup::Manager => Ok(true),
             _ => Ok(false),
         }
     }
