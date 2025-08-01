@@ -1,12 +1,10 @@
 use actix_web::{HttpResponse, Responder, Scope, web};
-use jsonwebtoken::TokenData;
-use serde::{Deserialize, de};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     database::Database,
     extractors::authentication_token::AuthenticationToken,
-    models::user::{User, UserInfo},
-    utils::jwt::generate_jwt_token,
+    models::user::{SignInResult, User, UserInfo},
 };
 
 pub fn user_scope() -> Scope {
@@ -15,7 +13,7 @@ pub fn user_scope() -> Scope {
         .route("/sign-in/username", web::post().to(sign_in_via_username))
         .route("/is-any-permission", web::get().to(is_user_any_permission))
         .route("/get-all", web::get().to(get_users))
-        .route("/test", web::get().to(test))
+        .route("/protected", web::get().to(protected_route))
 }
 
 #[derive(Deserialize, Debug)]
@@ -61,7 +59,10 @@ async fn sign_in_via_username(data: web::Json<UserJson>) -> impl Responder {
     };
 
     match User::sign_in_via_username(&db, user).await {
-        Ok(token) => HttpResponse::Created().json(token),
+        Ok(SignInResult::Token(token)) => HttpResponse::Created().json(SignInResult::Token(token)),
+        Ok(SignInResult::FirstLoginRedirect(token)) => {
+            HttpResponse::Created().json(SignInResult::FirstLoginRedirect(token))
+        }
         Err(e) => HttpResponse::InternalServerError().json(format!("An error occurred: {}", e)),
     }
 }
@@ -84,6 +85,12 @@ async fn is_user_any_permission(auth_token: AuthenticationToken) -> impl Respond
     }
 }
 
-async fn test() -> impl Responder {
-    HttpResponse::Ok().json(generate_jwt_token(1usize, "sanyika".to_string()).await)
+#[derive(Serialize)]
+struct ProtectedResponse {
+    message: String,
+}
+async fn protected_route(_auth_token: AuthenticationToken) -> impl Responder {
+    HttpResponse::Ok().json(ProtectedResponse {
+        message: "Sikeres hitelesítés".to_string(),
+    })
 }

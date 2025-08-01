@@ -47,6 +47,12 @@ impl From<String> for UserGroup {
     }
 }
 
+#[derive(Serialize)]
+pub enum SignInResult {
+    Token(String),
+    FirstLoginRedirect(String),
+}
+
 impl User {
     pub async fn new(db: &Database, new_user: User) -> Result<()> {
         // Check for required fields
@@ -93,9 +99,9 @@ impl User {
         Ok(())
     }
 
-    pub async fn sign_in_via_username(db: &Database, user: User) -> Result<String> {
+    pub async fn sign_in_via_username(db: &Database, user: User) -> Result<SignInResult> {
         let user_data = sqlx::query!(
-            "SELECT id, username, password FROM users WHERE username = $1",
+            "SELECT id, username, password, first_login FROM users WHERE username = $1",
             user.username
         )
         .fetch_optional(&db.pool)
@@ -105,12 +111,18 @@ impl User {
             return Err(anyhow::anyhow!("User not found"));
         };
 
+        if hashed_user.first_login {
+            return Ok(SignInResult::FirstLoginRedirect("asd".to_string()));
+        }
+
         if password_hashing::verify_password(&user.password.unwrap(), &hashed_user.password) {
-            Ok(generate_jwt_token(
-                user_data.unwrap().id as usize,
-                env::var("AUTH_SECRET").unwrap(),
-            )
-            .await)
+            Ok(SignInResult::Token(
+                generate_jwt_token(
+                    user_data.unwrap().id as usize,
+                    env::var("AUTH_SECRET").unwrap(),
+                )
+                .await,
+            ))
         } else {
             Err(anyhow::anyhow!("Incorrect password"))
         }
