@@ -4,7 +4,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     database::Database,
     extractors::authentication_token::AuthenticationToken,
-    models::user::{SignInResult, User, UserInfo},
+    models::{
+        user::{SignInResult, User},
+        user_info::UserInfo,
+    },
 };
 
 pub fn user_scope() -> Scope {
@@ -13,6 +16,10 @@ pub fn user_scope() -> Scope {
         .route("/sign-in/username", web::post().to(sign_in_via_username))
         .route("/is-any-permission", web::get().to(is_user_any_permission))
         .route("/get-all", web::get().to(get_users))
+        .route(
+            "/first-login/finish",
+            web::post().to(finish_user_first_login),
+        )
         .route("/protected", web::get().to(protected_route))
 }
 
@@ -59,10 +66,7 @@ async fn sign_in_via_username(data: web::Json<UserJson>) -> impl Responder {
     };
 
     match User::sign_in_via_username(&db, user).await {
-        Ok(SignInResult::Token(token)) => HttpResponse::Created().json(SignInResult::Token(token)),
-        Ok(SignInResult::FirstLoginRedirect(token)) => {
-            HttpResponse::Created().json(SignInResult::FirstLoginRedirect(token))
-        }
+        Ok(result) => HttpResponse::Created().json(result),
         Err(e) => HttpResponse::InternalServerError().json(format!("An error occurred: {}", e)),
     }
 }
@@ -80,6 +84,21 @@ async fn is_user_any_permission(auth_token: AuthenticationToken) -> impl Respond
     let db = Database::create_connection().await.unwrap();
 
     match User::is_any_permission(&db, auth_token.id as i32).await {
+        Ok(token) => HttpResponse::Created().json(token),
+        Err(e) => HttpResponse::InternalServerError().json(format!("An error occurred: {}", e)),
+    }
+}
+
+#[derive(Deserialize, Clone)]
+struct FirstLoginJson {
+    new_password: String,
+    token: String,
+}
+
+async fn finish_user_first_login(data: web::Json<FirstLoginJson>) -> impl Responder {
+    let db = Database::create_connection().await.unwrap();
+
+    match User::first_login(&db, data.new_password.clone(), data.token.clone()).await {
         Ok(token) => HttpResponse::Created().json(token),
         Err(e) => HttpResponse::InternalServerError().json(format!("An error occurred: {}", e)),
     }

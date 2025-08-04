@@ -1,13 +1,18 @@
 use std::env;
 
 use anyhow::{Ok, Result};
+use redis::Commands;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, prelude::Type};
 
 use crate::{
     database::Database,
-    models::contact::Contact,
-    utils::{jwt::generate_jwt_token, password_hashing},
+    models::{contact::Contact, user_info::UserInfo},
+    utils::{
+        jwt::generate_jwt_token,
+        password_hashing,
+        redis::{Redis, Token},
+    },
 };
 
 #[derive(Debug, Serialize, Deserialize, FromRow, Default)]
@@ -19,15 +24,6 @@ pub struct User {
     pub password: Option<String>,
     pub first_login: Option<bool>,
     pub user_group: Option<UserGroup>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow, Default)]
-pub struct UserInfo {
-    pub id: Option<i32>,
-    pub full_name: Option<String>,
-    pub phone_number: Option<String>,
-    pub hufa_code: Option<String>,
-    pub agent_code: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Type)]
@@ -49,8 +45,8 @@ impl From<String> for UserGroup {
 
 #[derive(Serialize)]
 pub enum SignInResult {
-    Token(String),
-    FirstLoginRedirect(String),
+    UserToken(String),
+    FirstLoginToken(String),
 }
 
 impl User {
@@ -111,17 +107,15 @@ impl User {
             return Err(anyhow::anyhow!("User not found"));
         };
 
-        if hashed_user.first_login {
-            return Ok(SignInResult::FirstLoginRedirect("asd".to_string()));
-        }
-
         if password_hashing::verify_password(&user.password.unwrap(), &hashed_user.password) {
-            Ok(SignInResult::Token(
-                generate_jwt_token(
-                    user_data.unwrap().id as usize,
-                    env::var("AUTH_SECRET").unwrap(),
-                )
-                .await,
+            if hashed_user.first_login {
+                let token = Self::create_first_login_token(db, hashed_user.id).await?;
+
+                return Ok(SignInResult::FirstLoginToken(token));
+            }
+
+            Ok(SignInResult::UserToken(
+                generate_jwt_token(hashed_user.id as usize, env::var("AUTH_SECRET").unwrap()).await,
             ))
         } else {
             Err(anyhow::anyhow!("Incorrect password"))
@@ -203,6 +197,33 @@ impl User {
 
         Ok(contacts)
     }
+
+    pub async fn first_login(db: &Database, new_password: String, token: String) -> Result<String> {
+        let mut redis_con = db.redis.get_connection().unwrap();
+        let user_id = Redis::get_user_id_by_token(&mut redis_con, &token)?;
+        println!("{user_id}");
+
+        if !Self::is_user_exists_by_id(db, user_id).await? {
+            return Err(anyhow::anyhow!("User not exists"));
+        }
+        let hashed_password = password_hashing::hash_password(&new_password);
+        let _ = sqlx::query!(
+            "UPDATE users
+             SET password = $2, first_login = False
+             WHERE id = $1",
+            user_id,
+            hashed_password
+        )
+        .execute(&db.pool)
+        .await?;
+
+        let user_token =
+            generate_jwt_token(user_id as usize, env::var("AUTH_SECRET").unwrap()).await;
+
+        redis_con.del::<_, String>(token)?;
+
+        Ok(user_token)
+    }
 }
 
 impl User {
@@ -229,5 +250,14 @@ impl User {
         .await?;
 
         Ok(is_exists.is_some())
+    }
+
+    async fn create_first_login_token(db: &Database, user_id: i32) -> Result<String> {
+        let mut redis_con = db.redis.get_connection().unwrap();
+
+        let token = Token::generate_token();
+        let _ = Redis::set_token_to_user(&mut redis_con, user_id as u32, &token, 120)?;
+
+        Ok(token)
     }
 }
