@@ -201,7 +201,6 @@ impl User {
     pub async fn first_login(db: &Database, new_password: String, token: String) -> Result<String> {
         let mut redis_con = db.redis.get_connection().unwrap();
         let user_id = Redis::get_user_id_by_token(&mut redis_con, &token)?;
-        println!("{user_id}");
 
         if !Self::is_user_exists_by_id(db, user_id).await? {
             return Err(anyhow::anyhow!("User not exists"));

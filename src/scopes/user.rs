@@ -49,7 +49,6 @@ async fn create_user(data: web::Json<UserJson>) -> impl Responder {
         password: data.password.clone(),
         ..Default::default()
     };
-    println!("{:?}", user);
 
     match User::new(&db, user).await {
         Ok(_) => HttpResponse::Created().json("Registration successful!"),

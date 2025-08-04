@@ -21,11 +21,10 @@ impl Redis {
         token: &str,
     ) -> redis::RedisResult<i32> {
         let is_exists = con.exists::<_, bool>(&token)?;
-        println!("{token}");
         if is_exists {
             let redis_value = con.get::<_, String>(&token)?;
             let user_id = redis_value[5..].parse::<i32>().unwrap();
-            println!("{user_id}");
+
             return Ok(user_id);
         }
         Ok(-1) // Not exists
