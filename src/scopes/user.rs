@@ -4,10 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     database::Database,
     extractors::authentication_token::AuthenticationToken,
-    models::{
-        user::{SignInResult, User},
-        user_info::UserInfo,
-    },
+    models::{user::User, user_info::UserInfo},
 };
 
 pub fn user_scope() -> Scope {
@@ -16,6 +13,10 @@ pub fn user_scope() -> Scope {
         .route("/sign-in/username", web::post().to(sign_in_via_username))
         .route("/is-any-permission", web::get().to(is_user_any_permission))
         .route("/get-all", web::get().to(get_users))
+        .route(
+            "/get/informations",
+            web::get().to(get_user_informations_by_id),
+        )
         .route(
             "/first-login/finish",
             web::post().to(finish_user_first_login),
@@ -75,6 +76,15 @@ async fn get_users(auth_token: AuthenticationToken) -> impl Responder {
 
     match User::get_all(&db, auth_token.id as i32).await {
         Ok(users) => HttpResponse::Created().json(users),
+        Err(e) => HttpResponse::InternalServerError().json(format!("An error occurred: {}", e)),
+    }
+}
+
+async fn get_user_informations_by_id(auth_token: AuthenticationToken) -> impl Responder {
+    let db = Database::create_connection().await.unwrap();
+
+    match User::get_informations_by_id(&db, auth_token.id as i32).await {
+        Ok(user) => HttpResponse::Created().json(user),
         Err(e) => HttpResponse::InternalServerError().json(format!("An error occurred: {}", e)),
     }
 }

@@ -182,6 +182,24 @@ impl User {
         Err(anyhow::anyhow!("User has no permission for that!"))
     }
 
+    pub async fn get_informations_by_id(db: &Database, user_id: i32) -> Result<UserInfo> {
+        if !Self::is_user_exists_by_id(db, user_id).await? {
+            return Err(anyhow::anyhow!("User not exists"));
+        }
+
+        let user_info = sqlx::query!("SELECT * FROM user_info WHERE user_id = $1", user_id)
+            .fetch_one(&db.pool)
+            .await?;
+
+        Ok(UserInfo {
+            id: None,
+            full_name: user_info.full_name.into(),
+            phone_number: user_info.phone_number.into(),
+            hufa_code: user_info.hufa_code.into(),
+            agent_code: user_info.agent_code.into(),
+        })
+    }
+
     pub async fn get_contacts_by_id(db: &Database, user_id: i32) -> Result<Vec<Contact>> {
         if !Self::is_user_exists_by_id(db, user_id).await? {
             return Err(anyhow::anyhow!("User not exists"));
