@@ -1,10 +1,11 @@
-use actix_web::{HttpResponse, Responder, Scope, web};
+use actix_web::{HttpResponse, Responder, ResponseError, Scope, web};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     database::Database,
     extractors::authentication_token::AuthenticationToken,
     models::{user::User, user_info::UserInfo},
+    utils::error::ApiError,
 };
 
 pub fn user_scope() -> Scope {
@@ -28,73 +29,84 @@ pub fn user_scope() -> Scope {
 struct UserJson {
     email: Option<String>,
     username: Option<String>,
-    full_name: Option<String>,
-    phone_number: Option<String>,
-    hufa_code: Option<String>,
-    agent_code: Option<String>,
     password: Option<String>,
+    user_info: UserInfo,
 }
 
-async fn create_user(data: web::Json<UserJson>) -> impl Responder {
-    let db = Database::create_connection().await.unwrap();
-    let user = User {
+#[derive(Deserialize, Debug)]
+struct SignInJson {
+    username: String,
+    password: String,
+}
+
+async fn create_user(
+    db: web::Data<Database>,
+    auth_token: AuthenticationToken,
+    data: web::Json<UserJson>,
+) -> impl Responder {
+    let new_user = User {
         email: data.email.clone(),
         username: data.username.clone(),
+        password: data.password.clone(),
         user_info: UserInfo {
-            full_name: data.full_name.clone(),
-            phone_number: data.phone_number.clone(),
-            hufa_code: data.hufa_code.clone(),
-            agent_code: data.agent_code.clone(),
+            full_name: data.user_info.full_name.clone(),
+            phone_number: data.user_info.phone_number.clone(),
+            hufa_code: data.user_info.hufa_code.clone(),
+            agent_code: data.user_info.agent_code.clone(),
             ..Default::default()
         },
-        password: data.password.clone(),
         ..Default::default()
     };
 
-    match User::new(&db, user).await {
+    match User::create(&db, auth_token.id as i32, new_user).await {
         Ok(_) => HttpResponse::Created().json("Registration successful!"),
-        Err(e) => HttpResponse::InternalServerError().json(format!("An error occurred: {}", e)),
+        Err(e) => ApiError::from(e).error_response(),
     }
 }
 
-async fn sign_in_via_username(data: web::Json<UserJson>) -> impl Responder {
-    let db = Database::create_connection().await.unwrap();
+async fn sign_in_via_username(
+    db: web::Data<Database>,
+    data: web::Json<SignInJson>,
+) -> impl Responder {
+    if data.username.trim().is_empty() || data.password.trim().is_empty() {
+        return ApiError::Validation("username and password are required".into()).error_response();
+    }
     let user = User {
-        username: data.username.clone(),
-        password: data.password.clone(),
+        username: Some(data.username.clone()),
+        password: Some(data.password.clone()),
         ..Default::default()
     };
 
-    match User::sign_in_via_username(&db, user).await {
-        Ok(result) => HttpResponse::Created().json(result),
-        Err(e) => HttpResponse::InternalServerError().json(format!("An error occurred: {}", e)),
+    match User::sign_in_with_username(&db, user).await {
+        Ok(result) => HttpResponse::Ok().json(result),
+        Err(e) => ApiError::from(e).error_response(),
     }
 }
 
-async fn get_users(auth_token: AuthenticationToken) -> impl Responder {
-    let db = Database::create_connection().await.unwrap();
-
-    match User::get_all(&db, auth_token.id as i32).await {
-        Ok(users) => HttpResponse::Created().json(users),
-        Err(e) => HttpResponse::InternalServerError().json(format!("An error occurred: {}", e)),
+async fn get_users(db: web::Data<Database>, auth_token: AuthenticationToken) -> impl Responder {
+    match User::list_all(&db, auth_token.id as i32).await {
+        Ok(users) => HttpResponse::Ok().json(users),
+        Err(e) => ApiError::from(e).error_response(),
     }
 }
 
-async fn get_user_informations_by_id(auth_token: AuthenticationToken) -> impl Responder {
-    let db = Database::create_connection().await.unwrap();
-
-    match User::get_informations_by_id(&db, auth_token.id as i32).await {
-        Ok(user) => HttpResponse::Created().json(user),
-        Err(e) => HttpResponse::InternalServerError().json(format!("An error occurred: {}", e)),
+async fn get_user_informations_by_id(
+    db: web::Data<Database>,
+    auth_token: AuthenticationToken,
+) -> impl Responder {
+    match User::get_info_by_user_id(&db, auth_token.id as i32).await {
+        Ok(user) => HttpResponse::Ok().json(user),
+        Err(e) => ApiError::from(e).error_response(),
     }
 }
 
-async fn is_user_any_permission(auth_token: AuthenticationToken) -> impl Responder {
-    let db = Database::create_connection().await.unwrap();
-
-    match User::is_any_permission(&db, auth_token.id as i32).await {
-        Ok(token) => HttpResponse::Created().json(token),
-        Err(e) => HttpResponse::InternalServerError().json(format!("An error occurred: {}", e)),
+async fn is_user_any_permission(
+    db: web::Data<Database>,
+    auth_token: AuthenticationToken,
+) -> impl Responder {
+    match User::has_any_privilege(&db, auth_token.id as i32).await {
+        Ok(token) => HttpResponse::Ok().json(token),
+        Err(e) => ApiError::from(e).error_response(),
     }
 }
 
@@ -104,12 +116,13 @@ struct FirstLoginJson {
     token: String,
 }
 
-async fn finish_user_first_login(data: web::Json<FirstLoginJson>) -> impl Responder {
-    let db = Database::create_connection().await.unwrap();
-
-    match User::first_login(&db, data.new_password.clone(), data.token.clone()).await {
-        Ok(token) => HttpResponse::Created().json(token),
-        Err(e) => HttpResponse::InternalServerError().json(format!("An error occurred: {}", e)),
+async fn finish_user_first_login(
+    db: web::Data<Database>,
+    data: web::Json<FirstLoginJson>,
+) -> impl Responder {
+    match User::complete_first_login(&db, data.new_password.clone(), data.token.clone()).await {
+        Ok(token) => HttpResponse::Ok().json(token),
+        Err(e) => ApiError::from(e).error_response(),
     }
 }
 
