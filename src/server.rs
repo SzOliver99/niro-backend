@@ -1,10 +1,10 @@
 use std::env;
 
 use actix_cors::Cors;
-use actix_web::{App, HttpServer, http, middleware::Logger};
+use actix_web::{App, HttpServer, http, middleware::Logger, web};
 use env_logger::Env;
 
-use crate::scopes;
+use crate::{database::Database, scopes};
 
 pub struct Server;
 impl Server {
@@ -13,6 +13,12 @@ impl Server {
         if env::args().any(|arg| arg == "-log") {
             env_logger::init_from_env(Env::default().default_filter_or("info"));
         }
+
+        // Initialize shared DB state once at startup
+        let db = Database::create_connection()
+            .await
+            .expect("Failed to initialize database");
+        let db_data = web::Data::new(db);
 
         HttpServer::new(move || {
             let cors = Cors::default()
@@ -29,6 +35,7 @@ impl Server {
             App::new()
                 .wrap(cors)
                 .wrap(Logger::default())
+                .app_data(db_data.clone())
                 .service(scopes::user::user_scope())
                 .service(scopes::contact::contact_scope())
         })
