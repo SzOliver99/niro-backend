@@ -50,7 +50,7 @@ impl FromRequest for AuthenticationToken {
             )));
         }
 
-        let secret = &env::var("AUTH_SECRET").expect("DATABASE_URL must be set!");
+        let secret = &env::var("AUTH_SECRET").expect("AUTH_SECRET must be set!");
 
         let token_result: Result<TokenData<Claims>, JwtError> = decode::<Claims>(
             &authentication_token,
