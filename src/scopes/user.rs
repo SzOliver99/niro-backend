@@ -4,7 +4,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     database::Database,
     extractors::authentication_token::AuthenticationToken,
-    models::{user::User, user_info::UserInfo},
+    models::{
+        user::{User, UserRole},
+        user_info::UserInfo,
+    },
     utils::error::ApiError,
 };
 
@@ -14,6 +17,7 @@ pub fn user_scope() -> Scope {
         .route("/sign-in/username", web::post().to(sign_in_via_username))
         .route("/is-any-permission", web::get().to(is_user_any_permission))
         .route("/get-all", web::get().to(get_users))
+        .route("/manager/get-all", web::get().to(get_manager_group))
         .route(
             "/get/informations",
             web::get().to(get_user_informations_by_id),
@@ -22,6 +26,7 @@ pub fn user_scope() -> Scope {
             "/first-login/finish",
             web::post().to(finish_user_first_login),
         )
+        .route("/managers", web::get().to(get_manager_names))
         .route("/protected", web::get().to(protected_route))
 }
 
@@ -31,6 +36,7 @@ struct UserJson {
     username: Option<String>,
     password: Option<String>,
     user_info: UserInfo,
+    manager_id: Option<i32>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -44,6 +50,7 @@ async fn create_user(
     auth_token: AuthenticationToken,
     data: web::Json<UserJson>,
 ) -> impl Responder {
+    println!("{data:?}");
     let new_user = User {
         email: data.email.clone(),
         username: data.username.clone(),
@@ -55,6 +62,7 @@ async fn create_user(
             agent_code: data.user_info.agent_code.clone(),
             ..Default::default()
         },
+        manager_id: data.manager_id.clone(),
         ..Default::default()
     };
 
@@ -84,7 +92,17 @@ async fn sign_in_via_username(
 }
 
 async fn get_users(db: web::Data<Database>, auth_token: AuthenticationToken) -> impl Responder {
-    match User::list_all(&db, auth_token.id as i32).await {
+    match User::get_all(&db, auth_token.id as i32).await {
+        Ok(users) => HttpResponse::Ok().json(users),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_manager_group(
+    db: web::Data<Database>,
+    auth_token: AuthenticationToken,
+) -> impl Responder {
+    match User::get_manager_group(&db, auth_token.id as i32).await {
         Ok(users) => HttpResponse::Ok().json(users),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -94,7 +112,7 @@ async fn get_user_informations_by_id(
     db: web::Data<Database>,
     auth_token: AuthenticationToken,
 ) -> impl Responder {
-    match User::get_info_by_user_id(&db, auth_token.id as i32).await {
+    match User::get_info_by_id(&db, auth_token.id as i32).await {
         Ok(user) => HttpResponse::Ok().json(user),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -104,8 +122,15 @@ async fn is_user_any_permission(
     db: web::Data<Database>,
     auth_token: AuthenticationToken,
 ) -> impl Responder {
-    match User::has_any_privilege(&db, auth_token.id as i32).await {
-        Ok(token) => HttpResponse::Ok().json(token),
+    match User::get_role(&db, auth_token.id as i32).await {
+        Ok(role) => HttpResponse::Ok().json(role),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_manager_names(db: web::Data<Database>) -> impl Responder {
+    match UserRole::get_manager(&db).await {
+        Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }
 }

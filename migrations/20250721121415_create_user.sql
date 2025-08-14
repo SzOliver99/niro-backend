@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users(
     password VARCHAR(254) NOT NULL,
     first_login BOOLEAN NOT NULL DEFAULT TRUE,
     user_role VARCHAR(10) NOT NULL DEFAULT 'Agent',
-    manager_id INT NULL REFERENCES users(id) ON DELETE SET NULL,
+    manager_id INT REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT users_user_role_check CHECK (user_role IN ('Agent', 'Manager', 'Leader'))
 );
 

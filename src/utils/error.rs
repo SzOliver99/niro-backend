@@ -9,7 +9,7 @@ pub enum ApiError {
     Unauthorized(String),
     Forbidden(String),
     Conflict(String),
-    Internal,
+    Internal(String),
 }
 
 impl Display for ApiError {
@@ -20,7 +20,7 @@ impl Display for ApiError {
             ApiError::Unauthorized(msg) => write!(f, "unauthorized: {}", msg),
             ApiError::Forbidden(msg) => write!(f, "forbidden: {}", msg),
             ApiError::Conflict(msg) => write!(f, "conflict: {}", msg),
-            ApiError::Internal => write!(f, "internal server error"),
+            ApiError::Internal(msg) => write!(f, "internal server error: {}", msg),
         }
     }
 }
@@ -48,15 +48,15 @@ impl ResponseError for ApiError {
             ApiError::Conflict(msg) => {
                 HttpResponse::Conflict().json(ErrorBody { error: msg.clone() })
             }
-            ApiError::Internal => HttpResponse::InternalServerError().json(ErrorBody {
-                error: "internal server error".to_string(),
-            }),
+            ApiError::Internal(msg) => {
+                HttpResponse::InternalServerError().json(ErrorBody { error: msg.clone() })
+            }
         }
     }
 }
 
 impl From<anyhow::Error> for ApiError {
-    fn from(_err: anyhow::Error) -> Self {
-        ApiError::Internal
+    fn from(err: anyhow::Error) -> Self {
+        ApiError::Internal(err.to_string())
     }
 }

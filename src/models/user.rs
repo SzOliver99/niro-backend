@@ -9,7 +9,7 @@ use crate::{
     database::Database,
     models::{
         contact::Contact,
-        dto::{ContactDto, UserInfoDto, UserWithInfoDto},
+        dto::{ContactDto, ManagerNameDto, UserInfoDto, UserWithInfoDto},
         user_info::UserInfo,
     },
     utils::{
@@ -56,7 +56,7 @@ pub enum SignInResult {
 
 impl User {
     pub async fn create(db: &Database, user_id: i32, new_user: User) -> Result<()> {
-        println!("user_id: {user_id}");
+        println!("user_id: {new_user:?}");
         // Check for required fields
         if new_user.email.is_none()
             || new_user.username.is_none()
@@ -84,25 +84,30 @@ impl User {
 
         let hashed_password = password_hashing::hash_password(&new_user.password.unwrap());
 
+        let mut tx = db.pool.begin().await?;
         let user_id = sqlx::query!(
-            "INSERT INTO users(email, username, password) VALUES($1, $2, $3) RETURNING id",
+            "INSERT INTO users(email, username, password, manager_id) VALUES($1, $2, $3, $4) RETURNING id",
             new_user.email,
             new_user.username,
-            hashed_password
+            hashed_password,
+            new_user.manager_id
         )
-        .fetch_one(&db.pool)
+        .fetch_one(&mut *tx)
         .await?;
 
         sqlx::query!(
-            "INSERT INTO user_info(user_id, full_name, phone_number, hufa_code, agent_code) VALUES($1, $2, $3, $4, $5)",
+            "INSERT INTO user_info(user_id, full_name, phone_number, hufa_code, agent_code)
+             VALUES($1, $2, $3, $4, $5)",
             user_id.id,
             new_user.user_info.full_name,
             new_user.user_info.phone_number,
             new_user.user_info.hufa_code,
             new_user.user_info.agent_code
         )
-        .execute(&db.pool)
+        .execute(&mut *tx)
         .await?;
+
+        tx.commit().await?;
 
         Ok(())
     }
@@ -134,23 +139,7 @@ impl User {
         }
     }
 
-    pub async fn has_any_privilege(db: &Database, user_id: i32) -> Result<bool> {
-        if !User::is_exists_by_id(db, user_id).await? {
-            return Err(anyhow::anyhow!("User not exists"));
-        }
-
-        let user_role = sqlx::query!("SELECT user_role FROM users WHERE id = $1", user_id)
-            .fetch_one(&db.pool)
-            .await?;
-
-        match UserRole::from(user_role.user_role) {
-            UserRole::Leader => Ok(true),
-            UserRole::Manager => Ok(true),
-            _ => Ok(false),
-        }
-    }
-
-    pub async fn list_all(db: &Database, user_id: i32) -> Result<Vec<UserWithInfoDto>> {
+    pub async fn get_all(db: &Database, user_id: i32) -> Result<Vec<UserWithInfoDto>> {
         if !User::is_exists_by_id(db, user_id).await? {
             return Err(anyhow::anyhow!("User not exists"));
         }
@@ -166,6 +155,7 @@ impl User {
                        u.email            AS user_email,
                        u.username         AS user_username,
                        u.user_role        AS user_user_role,
+                       u.manager_id       AS user_manager_id,
                        ui.id              AS ui_id,
                        ui.full_name       AS ui_full_name,
                        ui.phone_number    AS ui_phone_number,
@@ -192,6 +182,7 @@ impl User {
                         hufa_code: row.ui_hufa_code,
                         agent_code: row.ui_agent_code,
                     },
+                    manager_id: row.user_manager_id,
                 })
                 .collect();
 
@@ -201,7 +192,7 @@ impl User {
         Err(anyhow::anyhow!("User has no permission for that!"))
     }
 
-    pub async fn get_info_by_user_id(db: &Database, user_id: i32) -> Result<UserInfoDto> {
+    pub async fn get_info_by_id(db: &Database, user_id: i32) -> Result<UserInfoDto> {
         if !User::is_exists_by_id(db, user_id).await? {
             return Err(anyhow::anyhow!("User not exists"));
         }
@@ -221,6 +212,8 @@ impl User {
             agent_code: user_info.agent_code,
         })
     }
+
+    // pub async fn modify_info(db: &Database, user_id: i32, )
 
     pub async fn get_contacts_by_id(db: &Database, user_id: i32) -> Result<Vec<Contact>> {
         if !User::is_exists_by_id(db, user_id).await? {
@@ -307,10 +300,53 @@ impl User {
 
         Ok(user_token)
     }
+
+    pub async fn get_manager_group(db: &Database, user_id: i32) -> Result<Vec<UserWithInfoDto>> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT  u.id               AS user_id,
+                    u.email            AS user_email,
+                    u.username         AS user_username,
+                    u.user_role        AS user_user_role,
+                    u.manager_id       AS user_manager_id,
+                    ui.id              AS ui_id,
+                    ui.full_name       AS ui_full_name,
+                    ui.phone_number    AS ui_phone_number,
+                    ui.hufa_code       AS ui_hufa_code,
+                    ui.agent_code      AS ui_agent_code
+            FROM users u
+            JOIN user_info ui ON ui.user_id = u.id
+            WHERE u.manager_id = $1
+            "#,
+            user_id
+        )
+        .fetch_all(&db.pool)
+        .await?;
+
+        let users: Vec<UserWithInfoDto> = rows
+            .into_iter()
+            .map(|row| UserWithInfoDto {
+                id: row.user_id,
+                email: row.user_email,
+                username: row.user_username,
+                role: UserRole::from(row.user_user_role),
+                info: UserInfoDto {
+                    id: row.ui_id,
+                    full_name: row.ui_full_name,
+                    phone_number: row.ui_phone_number,
+                    hufa_code: row.ui_hufa_code,
+                    agent_code: row.ui_agent_code,
+                },
+                manager_id: row.user_manager_id,
+            })
+            .collect();
+
+        Ok(users)
+    }
 }
 
 impl User {
-    async fn get_role(db: &Database, user_id: i32) -> Result<UserRole> {
+    pub async fn get_role(db: &Database, user_id: i32) -> Result<UserRole> {
         let user = sqlx::query!("SELECT user_role FROM users WHERE id = $1", user_id)
             .fetch_one(&db.pool)
             .await?;
@@ -350,5 +386,30 @@ impl User {
         let _ = Redis::set_token_to_user(&mut redis_con, user_id as u32, &token, 120)?;
 
         Ok(token)
+    }
+}
+
+impl UserRole {
+    pub async fn get_manager(db: &Database) -> Result<Vec<ManagerNameDto>> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT u.id AS user_id, ui.full_name AS full_name, user_role
+            FROM users u
+            JOIN user_info ui ON ui.user_id = u.id
+            WHERE u.user_role = 'Manager' OR u.user_role = 'Leader'
+            ORDER BY u.user_role ASC, ui.full_name
+            "#
+        )
+        .fetch_all(&db.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| ManagerNameDto {
+                id: r.user_id,
+                full_name: r.full_name,
+                user_role: r.user_role,
+            })
+            .collect())
     }
 }

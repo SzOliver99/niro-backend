@@ -17,6 +17,7 @@ pub struct UserWithInfoDto {
     pub username: String,
     pub role: UserRole,
     pub info: UserInfoDto,
+    pub manager_id: Option<i32>,
 }
 
 #[derive(Serialize)]
@@ -59,4 +60,11 @@ impl From<Contact> for ContactDto {
             phone_number: value.phone_number.unwrap_or_default(),
         }
     }
+}
+
+#[derive(Serialize)]
+pub struct ManagerNameDto {
+    pub id: i32,
+    pub full_name: String,
+    pub user_role: String,
 }
