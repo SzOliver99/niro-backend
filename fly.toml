@@ -9,6 +9,9 @@ primary_region = 'otp'
 [build]
   dockerfile = 'Dockerfile'
 
+[deploy]
+  strategy = "immediate"
+
 [http_service]
   internal_port = 8080
   force_https = true
