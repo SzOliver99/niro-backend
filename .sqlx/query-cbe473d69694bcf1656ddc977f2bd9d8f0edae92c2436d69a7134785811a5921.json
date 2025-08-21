@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_info(user_id, full_name, phone_number, hufa_code, agent_code)\n             VALUES($1, $2, $3, $4, $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Varchar",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cbe473d69694bcf1656ddc977f2bd9d8f0edae92c2436d69a7134785811a5921"
+}
