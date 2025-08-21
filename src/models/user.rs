@@ -56,8 +56,6 @@ pub enum SignInResult {
 
 impl User {
     pub async fn create(db: &Database, user_id: i32, new_user: User) -> Result<()> {
-        println!("user_id: {new_user:?}");
-        // Check for required fields
         if new_user.email.is_none()
             || new_user.username.is_none()
             || new_user.password.is_none()
@@ -141,7 +139,7 @@ impl User {
 
     pub async fn get_all(db: &Database, user_id: i32) -> Result<Vec<UserWithInfoDto>> {
         if !User::is_exists_by_id(db, user_id).await? {
-            return Err(anyhow::anyhow!("User not exists"));
+            return Err(anyhow::anyhow!("Invalid user_id"));
         }
 
         let user = sqlx::query!("SELECT user_role FROM users WHERE id = $1", user_id)
@@ -163,6 +161,12 @@ impl User {
                        ui.agent_code      AS ui_agent_code
                 FROM users u
                 JOIN user_info ui ON ui.user_id = u.id
+                ORDER BY CASE u.user_role 
+                    WHEN 'Leader' THEN 1
+                    WHEN 'Manager' THEN 2
+                    WHEN 'Agent' THEN 3
+                    ELSE 4
+                END;
                 "#
             )
             .fetch_all(&db.pool)
@@ -194,7 +198,7 @@ impl User {
 
     pub async fn get_info_by_id(db: &Database, user_id: i32) -> Result<UserInfoDto> {
         if !User::is_exists_by_id(db, user_id).await? {
-            return Err(anyhow::anyhow!("User not exists"));
+            return Err(anyhow::anyhow!("Invalid user_id"));
         }
 
         let user_info = sqlx::query!(
@@ -213,11 +217,55 @@ impl User {
         })
     }
 
-    // pub async fn modify_info(db: &Database, user_id: i32, )
+    pub async fn modify_info(db: &Database, user: User) -> Result<()> {
+        if !User::is_exists_by_id(db, user.id.unwrap()).await? {
+            return Err(anyhow::anyhow!("Invalid user_id"));
+        }
+
+        let mut tx = db.pool.begin().await?;
+        if let Some(manager_id) = user.manager_id {
+            sqlx::query!(
+                "UPDATE users
+                 SET email = $2, manager_id = $3, user_role = DEFAULT
+                 WHERE id = $1",
+                user.id,
+                user.email,
+                manager_id
+            )
+            .execute(&mut *tx)
+            .await?;
+        } else {
+            sqlx::query!(
+                "UPDATE users
+                 SET email = $2, user_role = 'Manager', manager_id = NULL
+                 WHERE id = $1",
+                user.id,
+                user.email
+            )
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        sqlx::query!(
+            "UPDATE user_info
+             SET full_name = $2, phone_number = $3, hufa_code = $4, agent_code = $5
+             WHERE user_id = $1",
+            user.id,
+            user.user_info.full_name,
+            user.user_info.phone_number,
+            user.user_info.hufa_code,
+            user.user_info.agent_code
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+        Ok(())
+    }
 
     pub async fn get_contacts_by_id(db: &Database, user_id: i32) -> Result<Vec<Contact>> {
         if !User::is_exists_by_id(db, user_id).await? {
-            return Err(anyhow::anyhow!("User not exists"));
+            return Err(anyhow::anyhow!("Invalid user_id"));
         }
 
         let contacts = sqlx::query_as!(
@@ -238,7 +286,7 @@ impl User {
         offset: i64,
     ) -> Result<Vec<ContactDto>> {
         if !User::is_exists_by_id(db, user_id).await? {
-            return Err(anyhow::anyhow!("User not exists"));
+            return Err(anyhow::anyhow!("Invalid user_id"));
         }
 
         let rows = sqlx::query!(
@@ -280,7 +328,7 @@ impl User {
         let user_id = Redis::get_user_id_by_token(&mut redis_con, &token)?;
 
         if !User::is_exists_by_id(db, user_id).await? {
-            return Err(anyhow::anyhow!("User not exists"));
+            return Err(anyhow::anyhow!("Invalid user_id"));
         }
         let hashed_password = password_hashing::hash_password(&new_password);
         let _ = sqlx::query!(

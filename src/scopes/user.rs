@@ -15,17 +15,15 @@ pub fn user_scope() -> Scope {
     web::scope("/user")
         .route("/sign-up", web::post().to(create_user))
         .route("/sign-in/username", web::post().to(sign_in_via_username))
-        .route("/is-any-permission", web::get().to(is_user_any_permission))
+        .route("/role/get", web::get().to(get_user_role))
         .route("/get-all", web::get().to(get_users))
         .route("/manager/get-all", web::get().to(get_manager_group))
-        .route(
-            "/get/informations",
-            web::get().to(get_user_informations_by_id),
-        )
         .route(
             "/first-login/finish",
             web::post().to(finish_user_first_login),
         )
+        .route("/info/get", web::get().to(get_user_informations_by_id))
+        .route("/info/modify", web::put().to(modify_user_info))
         .route("/managers", web::get().to(get_manager_names))
         .route("/protected", web::get().to(protected_route))
 }
@@ -98,6 +96,32 @@ async fn get_users(db: web::Data<Database>, auth_token: AuthenticationToken) -> 
     }
 }
 
+#[derive(Deserialize, Clone, Debug)]
+struct ModifyInfoJson {
+    id: i32,
+    email: String,
+    info: UserInfo,
+    manager_id: Option<i32>,
+}
+async fn modify_user_info(
+    db: web::Data<Database>,
+    _: AuthenticationToken,
+    data: web::Json<ModifyInfoJson>,
+) -> impl Responder {
+    let user = User {
+        id: Some(data.id),
+        email: Some(data.email.clone()),
+        user_info: data.info.clone(),
+        manager_id: data.manager_id,
+        ..Default::default()
+    };
+
+    match User::modify_info(&db, user).await {
+        Ok(_) => HttpResponse::Ok().json({}),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
 async fn get_manager_group(
     db: web::Data<Database>,
     auth_token: AuthenticationToken,
@@ -118,10 +142,7 @@ async fn get_user_informations_by_id(
     }
 }
 
-async fn is_user_any_permission(
-    db: web::Data<Database>,
-    auth_token: AuthenticationToken,
-) -> impl Responder {
+async fn get_user_role(db: web::Data<Database>, auth_token: AuthenticationToken) -> impl Responder {
     match User::get_role(&db, auth_token.id as i32).await {
         Ok(role) => HttpResponse::Ok().json(role),
         Err(e) => ApiError::from(e).error_response(),
@@ -140,7 +161,6 @@ struct FirstLoginJson {
     new_password: String,
     token: String,
 }
-
 async fn finish_user_first_login(
     db: web::Data<Database>,
     data: web::Json<FirstLoginJson>,
