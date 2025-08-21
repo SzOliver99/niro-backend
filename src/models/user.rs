@@ -217,7 +217,7 @@ impl User {
         })
     }
 
-    pub async fn modify_info(db: &Database, user: User) -> Result<()> {
+    pub async fn modify_info(db: &Database, user_id: i32, user: User) -> Result<()> {
         if !User::is_exists_by_id(db, user.id.unwrap()).await? {
             return Err(anyhow::anyhow!("Invalid user_id"));
         }
@@ -235,15 +235,27 @@ impl User {
             .execute(&mut *tx)
             .await?;
         } else {
-            sqlx::query!(
-                "UPDATE users
-                 SET email = $2, user_role = 'Manager', manager_id = NULL
+            if let UserRole::Leader = Self::get_role(db, user_id).await? {
+                sqlx::query!(
+                    "UPDATE users
+                     SET email = $2, user_role = 'Manager', manager_id = NULL
+                     WHERE id = $1",
+                    user.id,
+                    user.email
+                )
+                .execute(&mut *tx)
+                .await?;
+            } else {
+                sqlx::query!(
+                    "UPDATE users
+                 SET email = $2
                  WHERE id = $1",
-                user.id,
-                user.email
-            )
-            .execute(&mut *tx)
-            .await?;
+                    user.id,
+                    user.email
+                )
+                .execute(&mut *tx)
+                .await?;
+            }
         }
 
         sqlx::query!(

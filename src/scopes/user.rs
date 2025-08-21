@@ -105,7 +105,7 @@ struct ModifyInfoJson {
 }
 async fn modify_user_info(
     db: web::Data<Database>,
-    _: AuthenticationToken,
+    auth_token: AuthenticationToken,
     data: web::Json<ModifyInfoJson>,
 ) -> impl Responder {
     let user = User {
@@ -116,7 +116,7 @@ async fn modify_user_info(
         ..Default::default()
     };
 
-    match User::modify_info(&db, user).await {
+    match User::modify_info(&db, auth_token.id as i32, user).await {
         Ok(_) => HttpResponse::Ok().json({}),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -156,7 +156,7 @@ async fn get_manager_names(db: web::Data<Database>) -> impl Responder {
     }
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 struct FirstLoginJson {
     new_password: String,
     token: String,
@@ -165,6 +165,7 @@ async fn finish_user_first_login(
     db: web::Data<Database>,
     data: web::Json<FirstLoginJson>,
 ) -> impl Responder {
+    println!("{:?}", data);
     match User::complete_first_login(&db, data.new_password.clone(), data.token.clone()).await {
         Ok(token) => HttpResponse::Ok().json(token),
         Err(e) => ApiError::from(e).error_response(),
