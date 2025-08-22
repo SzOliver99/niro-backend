@@ -22,7 +22,7 @@ impl Database {
 
         let redis = redis::Client::open(redis_url).unwrap();
 
-        sqlx::migrate!("./migrations").run(&pool).await?;
+        // sqlx::migrate!("./migrations").run(&pool).await?;
 
         Ok(Self { pool, redis })
     }
