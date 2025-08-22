@@ -84,10 +84,11 @@ impl User {
 
         let mut tx = db.pool.begin().await?;
         let user_id = sqlx::query!(
-            "INSERT INTO users(email, username, password, manager_id) VALUES($1, $2, $3, $4) RETURNING id",
+            "INSERT INTO users(email, username, password, user_role, manager_id) VALUES($1, $2, $3, $4, $5) RETURNING id",
             new_user.email,
             new_user.username,
             hashed_password,
+            if new_user.manager_id.is_some() { "Agent" } else { "Manager" },
             new_user.manager_id
         )
         .fetch_one(&mut *tx)
