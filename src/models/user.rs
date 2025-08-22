@@ -279,6 +279,22 @@ impl User {
         Ok(())
     }
 
+    pub async fn terminate_contact(db: &Database, user: User) -> Result<()> {
+        if !User::is_exists_by_id(db, user.id.unwrap()).await? {
+            return Err(anyhow::anyhow!("Invalid user_id"));
+        }
+
+        sqlx::query!(
+            "DELETE FROM users
+             WHERE id = $1",
+            user.id
+        )
+        .execute(&db.pool)
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn get_contacts_by_id(db: &Database, user_id: i32) -> Result<Vec<Contact>> {
         if !User::is_exists_by_id(db, user_id).await? {
             return Err(anyhow::anyhow!("Invalid user_id"));

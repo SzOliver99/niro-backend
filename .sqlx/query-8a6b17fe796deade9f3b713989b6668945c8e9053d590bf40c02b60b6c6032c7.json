@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users\n                 SET manager_id = NULL, user_role = 'Manager'\n                 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8a6b17fe796deade9f3b713989b6668945c8e9053d590bf40c02b60b6c6032c7"
+}

@@ -19,6 +19,7 @@ pub fn user_scope() -> Scope {
         .route("/get-all", web::get().to(get_users))
         .route("/manager/get-all", web::get().to(get_manager_group))
         .route("/manager/modify", web::put().to(modify_user_manager))
+        .route("/terminate", web::delete().to(delete_user))
         .route(
             "/first-login/finish",
             web::post().to(finish_user_first_login),
@@ -136,9 +137,24 @@ async fn modify_user_manager(
         manager_id: data.manager_id,
         ..Default::default()
     };
-    println!("{:#?}", user);
 
     match User::modify_manager(&db, user).await {
+        Ok(_) => HttpResponse::Ok().json({}),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn delete_user(
+    db: web::Data<Database>,
+    auth_token: AuthenticationToken,
+    data: web::Json<i32>,
+) -> impl Responder {
+    let user = User {
+        id: Some(data.0),
+        ..Default::default()
+    };
+
+    match User::terminate_contact(&db, user).await {
         Ok(_) => HttpResponse::Ok().json({}),
         Err(e) => ApiError::from(e).error_response(),
     }

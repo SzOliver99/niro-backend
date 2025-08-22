@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users(
 
 CREATE TABLE IF NOT EXISTS user_info(
     id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(id),
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     full_name TEXT NOT NULL,
     phone_number VARCHAR(254) UNIQUE NOT NULL,
     hufa_code VARCHAR(254) UNIQUE NOT NULL,
