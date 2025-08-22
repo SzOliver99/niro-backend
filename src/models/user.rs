@@ -24,7 +24,7 @@ pub struct User {
     pub id: Option<i32>,
     pub email: Option<String>,
     pub username: Option<String>,
-    pub user_info: UserInfo,
+    pub info: UserInfo,
     pub password: Option<String>,
     pub first_login: Option<bool>,
     pub user_role: Option<UserRole>,
@@ -59,10 +59,10 @@ impl User {
         if new_user.email.is_none()
             || new_user.username.is_none()
             || new_user.password.is_none()
-            || new_user.user_info.full_name.is_none()
-            || new_user.user_info.phone_number.is_none()
-            || new_user.user_info.hufa_code.is_none()
-            || new_user.user_info.agent_code.is_none()
+            || new_user.info.full_name.is_none()
+            || new_user.info.phone_number.is_none()
+            || new_user.info.hufa_code.is_none()
+            || new_user.info.agent_code.is_none()
         {
             return Err(anyhow::anyhow!(
                 "All fields (email, username, password, full_name, phone_number, hufa_code, agent_code) are required"
@@ -97,10 +97,10 @@ impl User {
             "INSERT INTO user_info(user_id, full_name, phone_number, hufa_code, agent_code)
              VALUES($1, $2, $3, $4, $5)",
             user_id.id,
-            new_user.user_info.full_name,
-            new_user.user_info.phone_number,
-            new_user.user_info.hufa_code,
-            new_user.user_info.agent_code
+            new_user.info.full_name,
+            new_user.info.phone_number,
+            new_user.info.hufa_code,
+            new_user.info.agent_code
         )
         .execute(&mut *tx)
         .await?;
@@ -217,61 +217,65 @@ impl User {
         })
     }
 
-    pub async fn modify_info(db: &Database, user_id: i32, user: User) -> Result<()> {
+    pub async fn modify_info(db: &Database, user: User) -> Result<()> {
         if !User::is_exists_by_id(db, user.id.unwrap()).await? {
             return Err(anyhow::anyhow!("Invalid user_id"));
         }
 
         let mut tx = db.pool.begin().await?;
-        if let Some(manager_id) = user.manager_id {
-            sqlx::query!(
-                "UPDATE users
-                 SET email = $2, manager_id = $3, user_role = DEFAULT
-                 WHERE id = $1",
-                user.id,
-                user.email,
-                manager_id
-            )
-            .execute(&mut *tx)
-            .await?;
-        } else {
-            if let UserRole::Leader = Self::get_role(db, user_id).await? {
-                sqlx::query!(
-                    "UPDATE users
-                     SET email = $2, user_role = 'Manager', manager_id = NULL
-                     WHERE id = $1",
-                    user.id,
-                    user.email
-                )
-                .execute(&mut *tx)
-                .await?;
-            } else {
-                sqlx::query!(
-                    "UPDATE users
-                 SET email = $2
-                 WHERE id = $1",
-                    user.id,
-                    user.email
-                )
-                .execute(&mut *tx)
-                .await?;
-            }
-        }
+        sqlx::query!(
+            "UPDATE users
+             SET email = $2
+             WHERE id = $1",
+            user.id,
+            user.email
+        )
+        .execute(&mut *tx)
+        .await?;
 
         sqlx::query!(
             "UPDATE user_info
              SET full_name = $2, phone_number = $3, hufa_code = $4, agent_code = $5
              WHERE user_id = $1",
             user.id,
-            user.user_info.full_name,
-            user.user_info.phone_number,
-            user.user_info.hufa_code,
-            user.user_info.agent_code
+            user.info.full_name,
+            user.info.phone_number,
+            user.info.hufa_code,
+            user.info.agent_code
         )
         .execute(&mut *tx)
         .await?;
 
         tx.commit().await?;
+        Ok(())
+    }
+
+    pub async fn modify_manager(db: &Database, user: User) -> Result<()> {
+        if !User::is_exists_by_id(db, user.id.unwrap()).await? {
+            return Err(anyhow::anyhow!("Invalid user_id"));
+        }
+
+        if let Some(manager_id) = user.manager_id {
+            sqlx::query!(
+                "UPDATE users
+                 SET manager_id = $2, user_role = DEFAULT
+                 WHERE id = $1",
+                user.id,
+                manager_id
+            )
+            .execute(&db.pool)
+            .await?;
+        } else {
+            sqlx::query!(
+                "UPDATE users
+                 SET manager_id = NULL, user_role = 'Manager'
+                 WHERE id = $1",
+                user.id
+            )
+            .execute(&db.pool)
+            .await?;
+        }
+
         Ok(())
     }
 

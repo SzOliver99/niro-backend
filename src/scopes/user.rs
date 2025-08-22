@@ -18,6 +18,7 @@ pub fn user_scope() -> Scope {
         .route("/role/get", web::get().to(get_user_role))
         .route("/get-all", web::get().to(get_users))
         .route("/manager/get-all", web::get().to(get_manager_group))
+        .route("/manager/modify", web::put().to(modify_user_manager))
         .route(
             "/first-login/finish",
             web::post().to(finish_user_first_login),
@@ -33,7 +34,7 @@ struct UserJson {
     email: Option<String>,
     username: Option<String>,
     password: Option<String>,
-    user_info: UserInfo,
+    info: UserInfo,
     manager_id: Option<i32>,
 }
 
@@ -53,11 +54,11 @@ async fn create_user(
         email: data.email.clone(),
         username: data.username.clone(),
         password: data.password.clone(),
-        user_info: UserInfo {
-            full_name: data.user_info.full_name.clone(),
-            phone_number: data.user_info.phone_number.clone(),
-            hufa_code: data.user_info.hufa_code.clone(),
-            agent_code: data.user_info.agent_code.clone(),
+        info: UserInfo {
+            full_name: data.info.full_name.clone(),
+            phone_number: data.info.phone_number.clone(),
+            hufa_code: data.info.hufa_code.clone(),
+            agent_code: data.info.agent_code.clone(),
             ..Default::default()
         },
         manager_id: data.manager_id.clone(),
@@ -97,26 +98,47 @@ async fn get_users(db: web::Data<Database>, auth_token: AuthenticationToken) -> 
 }
 
 #[derive(Deserialize, Clone, Debug)]
-struct ModifyInfoJson {
+struct ModifyUserInfoJson {
     id: i32,
     email: String,
     info: UserInfo,
-    manager_id: Option<i32>,
 }
 async fn modify_user_info(
     db: web::Data<Database>,
-    auth_token: AuthenticationToken,
-    data: web::Json<ModifyInfoJson>,
+    _: AuthenticationToken,
+    data: web::Json<ModifyUserInfoJson>,
 ) -> impl Responder {
     let user = User {
         id: Some(data.id),
         email: Some(data.email.clone()),
-        user_info: data.info.clone(),
-        manager_id: data.manager_id,
+        info: data.info.clone(),
         ..Default::default()
     };
 
-    match User::modify_info(&db, auth_token.id as i32, user).await {
+    match User::modify_info(&db, user).await {
+        Ok(_) => HttpResponse::Ok().json({}),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+#[derive(Deserialize, Clone, Debug)]
+struct ModifyUserManagerJson {
+    id: i32,
+    manager_id: Option<i32>,
+}
+async fn modify_user_manager(
+    db: web::Data<Database>,
+    _: AuthenticationToken,
+    data: web::Json<ModifyUserManagerJson>,
+) -> impl Responder {
+    let user = User {
+        id: Some(data.id),
+        manager_id: data.manager_id,
+        ..Default::default()
+    };
+    println!("{:#?}", user);
+
+    match User::modify_manager(&db, user).await {
         Ok(_) => HttpResponse::Ok().json({}),
         Err(e) => ApiError::from(e).error_response(),
     }
