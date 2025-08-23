@@ -471,15 +471,16 @@ impl User {
 }
 
 impl UserRole {
-    pub async fn get_manager(db: &Database) -> Result<Vec<ManagerNameDto>> {
+    pub async fn get_managers(db: &Database, user: User) -> Result<Vec<ManagerNameDto>> {
         let rows = sqlx::query!(
             r#"
             SELECT u.id AS user_id, ui.full_name AS full_name, user_role
             FROM users u
             JOIN user_info ui ON ui.user_id = u.id
-            WHERE u.user_role = 'Manager' OR u.user_role = 'Leader'
+            WHERE (u.user_role = 'Manager' OR u.user_role = 'Leader') AND u.id != $1
             ORDER BY u.user_role ASC, ui.full_name
-            "#
+            "#,
+            user.id
         )
         .fetch_all(&db.pool)
         .await?;

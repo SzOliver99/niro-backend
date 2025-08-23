@@ -26,7 +26,7 @@ pub fn user_scope() -> Scope {
         )
         .route("/info/get", web::get().to(get_user_informations_by_id))
         .route("/info/modify", web::put().to(modify_user_info))
-        .route("/managers", web::get().to(get_manager_names))
+        .route("/managers", web::post().to(get_manager_names))
         .route("/protected", web::get().to(protected_route))
 }
 
@@ -187,8 +187,17 @@ async fn get_user_role(db: web::Data<Database>, auth_token: AuthenticationToken)
     }
 }
 
-async fn get_manager_names(db: web::Data<Database>) -> impl Responder {
-    match UserRole::get_manager(&db).await {
+async fn get_manager_names(
+    db: web::Data<Database>,
+    data: web::Json<Option<i32>>,
+) -> impl Responder {
+    let user = User {
+        id: data.0,
+        ..Default::default()
+    };
+    println!("{:?}", data.0);
+
+    match UserRole::get_managers(&db, user).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }
