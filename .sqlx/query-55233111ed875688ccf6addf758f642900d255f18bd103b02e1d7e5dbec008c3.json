@@ -1,35 +1,30 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, email, first_name, last_name, phone_number, user_id FROM contacts WHERE user_id = $1",
+  "query": "SELECT full_name, phone_number, email, address, user_id \n             FROM customers\n             WHERE id = $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
-        "type_info": "Int4"
+        "name": "full_name",
+        "type_info": "Varchar"
       },
       {
         "ordinal": 1,
-        "name": "email",
-        "type_info": "Varchar"
-      },
-      {
-        "ordinal": 2,
-        "name": "first_name",
-        "type_info": "Varchar"
-      },
-      {
-        "ordinal": 3,
-        "name": "last_name",
-        "type_info": "Varchar"
-      },
-      {
-        "ordinal": 4,
         "name": "phone_number",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 5,
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "address",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
         "name": "user_id",
         "type_info": "Int4"
       }
@@ -44,9 +39,8 @@
       false,
       false,
       false,
-      false,
-      false
+      true
     ]
   },
-  "hash": "614e69d762c6afff1196809e70d97ec2dc6da33b62a26d3cba617bf3be3caacd"
+  "hash": "55233111ed875688ccf6addf758f642900d255f18bd103b02e1d7e5dbec008c3"
 }

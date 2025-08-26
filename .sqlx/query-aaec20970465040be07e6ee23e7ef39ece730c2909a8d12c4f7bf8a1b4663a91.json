@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id FROM contacts\n             WHERE id = $1",
+  "query": "SELECT id FROM customer_leads\n             WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -18,5 +18,5 @@
       false
     ]
   },
-  "hash": "397fe0f17626fe05442f8b18c1e84151c0c05009e7289552e0eb8253c5124cfa"
+  "hash": "aaec20970465040be07e6ee23e7ef39ece730c2909a8d12c4f7bf8a1b4663a91"
 }

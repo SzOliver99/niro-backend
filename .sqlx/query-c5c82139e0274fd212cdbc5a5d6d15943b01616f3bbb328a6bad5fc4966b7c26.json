@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE customers\n             SET user_id = $2\n             WHERE id = ANY($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4Array",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c5c82139e0274fd212cdbc5a5d6d15943b01616f3bbb328a6bad5fc4966b7c26"
+}

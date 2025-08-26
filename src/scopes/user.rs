@@ -13,20 +13,21 @@ use crate::{
 
 pub fn user_scope() -> Scope {
     web::scope("/user")
-        .route("/sign-up", web::post().to(create_user))
-        .route("/sign-in/username", web::post().to(sign_in_via_username))
-        .route("/role/get", web::get().to(get_user_role))
-        .route("/get-all", web::get().to(get_users))
-        .route("/manager/get-all", web::get().to(get_manager_group))
-        .route("/manager/modify", web::put().to(modify_user_manager))
-        .route("/terminate", web::delete().to(delete_user))
+        .route("/register", web::post().to(create_user))
+        .route("/login/username", web::post().to(sign_in_via_username))
+        .route("/role", web::get().to(get_user_role))
+        .route("/all", web::get().to(get_all_user))
+        .route("/sub-users", web::get().to(get_user_sub_users))
+        .route("/managers/group", web::get().to(get_manager_group))
+        .route("/manager", web::put().to(modify_user_manager))
+        .route("/delete", web::delete().to(delete_user))
         .route(
-            "/first-login/finish",
+            "/first-login/complete",
             web::post().to(finish_user_first_login),
         )
-        .route("/info/get", web::get().to(get_user_informations_by_id))
-        .route("/info/modify", web::put().to(modify_user_info))
-        .route("/managers", web::post().to(get_manager_names))
+        .route("/info", web::get().to(get_user_informations_by_id))
+        .route("/info", web::put().to(modify_user_info))
+        .route("/managers/list", web::post().to(get_manager_names))
         .route("/protected", web::get().to(protected_route))
 }
 
@@ -50,7 +51,10 @@ async fn create_user(
     auth_token: AuthenticationToken,
     data: web::Json<UserJson>,
 ) -> impl Responder {
-    println!("{data:?}");
+    if let Err(e) = User::require_role(&db, UserRole::Leader, auth_token.id as i32).await {
+        return ApiError::from(e).error_response();
+    }
+
     let new_user = User {
         email: data.email.clone(),
         username: data.username.clone(),
@@ -66,7 +70,7 @@ async fn create_user(
         ..Default::default()
     };
 
-    match User::create(&db, auth_token.id as i32, new_user).await {
+    match User::create(&db, new_user).await {
         Ok(_) => HttpResponse::Created().json("Registration successful!"),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -91,7 +95,7 @@ async fn sign_in_via_username(
     }
 }
 
-async fn get_users(db: web::Data<Database>, auth_token: AuthenticationToken) -> impl Responder {
+async fn get_all_user(db: web::Data<Database>, auth_token: AuthenticationToken) -> impl Responder {
     match User::get_all(&db, auth_token.id as i32).await {
         Ok(users) => HttpResponse::Ok().json(users),
         Err(e) => ApiError::from(e).error_response(),
@@ -109,6 +113,10 @@ async fn modify_user_info(
     auth_token: AuthenticationToken,
     data: web::Json<ModifyUserInfoJson>,
 ) -> impl Responder {
+    if let Err(e) = User::require_role(&db, UserRole::Manager, auth_token.id as i32).await {
+        return ApiError::from(e).error_response();
+    }
+
     let user = User {
         id: if data.id.is_some() {
             data.id
@@ -133,9 +141,13 @@ struct ModifyUserManagerJson {
 }
 async fn modify_user_manager(
     db: web::Data<Database>,
-    _: AuthenticationToken,
+    auth_token: AuthenticationToken,
     data: web::Json<ModifyUserManagerJson>,
 ) -> impl Responder {
+    if let Err(e) = User::require_role(&db, UserRole::Leader, auth_token.id as i32).await {
+        return ApiError::from(e).error_response();
+    }
+
     let user = User {
         id: Some(data.id),
         manager_id: data.manager_id,
@@ -153,12 +165,16 @@ async fn delete_user(
     auth_token: AuthenticationToken,
     data: web::Json<i32>,
 ) -> impl Responder {
+    if let Err(e) = User::require_role(&db, UserRole::Leader, auth_token.id as i32).await {
+        return ApiError::from(e).error_response();
+    }
+
     let user = User {
         id: Some(data.0),
         ..Default::default()
     };
 
-    match User::terminate_contact(&db, user).await {
+    match User::terminate_user(&db, user).await {
         Ok(_) => HttpResponse::Ok().json({}),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -206,6 +222,16 @@ async fn get_manager_names(
     }
 }
 
+async fn get_user_sub_users(
+    db: web::Data<Database>,
+    auth_token: AuthenticationToken,
+) -> impl Responder {
+    match User::get_sub_users(&db, auth_token.id as i32).await {
+        Ok(list) => HttpResponse::Ok().json(list),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
 #[derive(Deserialize, Clone, Debug)]
 struct FirstLoginJson {
     new_password: String,
@@ -215,7 +241,6 @@ async fn finish_user_first_login(
     db: web::Data<Database>,
     data: web::Json<FirstLoginJson>,
 ) -> impl Responder {
-    println!("{:?}", data);
     match User::complete_first_login(&db, data.new_password.clone(), data.token.clone()).await {
         Ok(token) => HttpResponse::Ok().json(token),
         Err(e) => ApiError::from(e).error_response(),

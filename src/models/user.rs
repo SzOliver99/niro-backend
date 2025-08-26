@@ -2,16 +2,12 @@ use std::env;
 
 use anyhow::{Ok, Result};
 use redis::Commands;
-use serde::{Deserialize, Serialize, de};
+use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, prelude::Type};
 
 use crate::{
     database::Database,
-    models::{
-        dto::{LeadDto, ManagerNameDto},
-        lead::Lead,
-        user_info::UserInfo,
-    },
+    models::{dto::ManagerNameDto, user_info::UserInfo},
     utils::{
         jwt::generate_jwt_token,
         password_hashing,
@@ -31,7 +27,7 @@ pub struct User {
     pub manager_id: Option<i32>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Type)]
+#[derive(Debug, Serialize, Deserialize, Clone, Type, PartialEq, Eq, PartialOrd, Ord)]
 pub enum UserRole {
     Agent,   // Üzletkötő
     Manager, // Menedzser
@@ -55,7 +51,60 @@ pub enum SignInResult {
 }
 
 impl User {
-    pub async fn create(db: &Database, user_id: i32, new_user: User) -> Result<()> {
+    pub async fn get_role(db: &Database, user_id: i32) -> Result<UserRole> {
+        let user = sqlx::query!("SELECT user_role FROM users WHERE id = $1", user_id)
+            .fetch_one(&db.pool)
+            .await?;
+
+        Ok(UserRole::from(user.user_role))
+    }
+
+    pub async fn require_role(db: &Database, min_role: UserRole, user_id: i32) -> Result<()> {
+        let user_role = Self::get_role(db, user_id).await?;
+
+        if user_role >= min_role {
+            return Ok(());
+        }
+        Err(anyhow::anyhow!("User has no permission!"))
+    }
+
+    async fn is_exists(db: &Database, user: &User) -> Result<bool> {
+        let is_exists = sqlx::query!(
+            "SELECT id FROM users
+             WHERE email = $1 OR username = $2",
+            user.email,
+            user.username
+        )
+        .fetch_optional(&db.pool)
+        .await?;
+
+        Ok(is_exists.is_some())
+    }
+
+    async fn is_exists_by_id(db: &Database, user_id: i32) -> Result<bool> {
+        let is_exists = sqlx::query!(
+            "SELECT id FROM users
+             WHERE id = $1",
+            user_id
+        )
+        .fetch_optional(&db.pool)
+        .await?;
+
+        Ok(is_exists.is_some())
+    }
+
+    async fn create_first_login_token(db: &Database, user_id: i32) -> Result<String> {
+        let mut redis_con = db.redis.get_connection().unwrap();
+
+        let token = Token::generate_token();
+        let _ = Redis::set_token_to_user(&mut redis_con, user_id as u32, &token, 120)?;
+
+        Ok(token)
+    }
+}
+
+impl User {
+    pub async fn create(db: &Database, new_user: User) -> Result<()> {
         if new_user.email.is_none()
             || new_user.username.is_none()
             || new_user.password.is_none()
@@ -67,11 +116,6 @@ impl User {
             return Err(anyhow::anyhow!(
                 "All fields (email, username, password, full_name, phone_number, hufa_code, agent_code) are required"
             ));
-        }
-
-        let user_role = User::get_role(db, user_id).await?;
-        if !matches!(user_role, UserRole::Leader) {
-            return Err(anyhow::anyhow!("User no permission to create agent"));
         }
 
         if User::is_exists(db, &new_user).await? {
@@ -296,7 +340,7 @@ impl User {
         Ok(())
     }
 
-    pub async fn terminate_contact(db: &Database, user: User) -> Result<()> {
+    pub async fn terminate_user(db: &Database, user: User) -> Result<()> {
         if !User::is_exists_by_id(db, user.id.unwrap()).await? {
             return Err(anyhow::anyhow!("Invalid user_id"));
         }
@@ -312,61 +356,45 @@ impl User {
         Ok(())
     }
 
-    pub async fn get_contacts_by_id(db: &Database, user_id: i32) -> Result<Vec<Lead>> {
-        if !User::is_exists_by_id(db, user_id).await? {
-            return Err(anyhow::anyhow!("Invalid user_id"));
-        }
+    // pub async fn list_contacts_paginated(
+    //     db: &Database,
+    //     user_id: i32,
+    //     limit: i64,
+    //     offset: i64,
+    // ) -> Result<Vec<LeadDto>> {
+    //     if !User::is_exists_by_id(db, user_id).await? {
+    //         return Err(anyhow::anyhow!("Invalid user_id"));
+    //     }
 
-        let contacts = sqlx::query_as!(
-            Lead,
-            "SELECT id, email, first_name, last_name, phone_number, user_id FROM contacts WHERE user_id = $1",
-            user_id
-        )
-        .fetch_all(&db.pool)
-        .await?;
+    //     let rows = sqlx::query!(
+    //         r#"
+    //         SELECT c.id, c.email, c.first_name, c.last_name, c.phone_number
+    //         FROM contacts c
+    //         JOIN users u ON u.id = c.user_id
+    //         WHERE c.user_id = $1
+    //         ORDER BY c.id
+    //         LIMIT $2 OFFSET $3
+    //         "#,
+    //         user_id,
+    //         limit,
+    //         offset
+    //     )
+    //     .fetch_all(&db.pool)
+    //     .await?;
 
-        Ok(contacts)
-    }
+    //     let result: Vec<LeadDto> = rows
+    //         .into_iter()
+    //         .map(|r| LeadDto {
+    //             id: r.id,
+    //             email: r.email,
+    //             first_name: r.first_name,
+    //             last_name: r.last_name,
+    //             phone_number: r.phone_number,
+    //         })
+    //         .collect();
 
-    pub async fn list_contacts_paginated(
-        db: &Database,
-        user_id: i32,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<LeadDto>> {
-        if !User::is_exists_by_id(db, user_id).await? {
-            return Err(anyhow::anyhow!("Invalid user_id"));
-        }
-
-        let rows = sqlx::query!(
-            r#"
-            SELECT c.id, c.email, c.first_name, c.last_name, c.phone_number
-            FROM contacts c
-            JOIN users u ON u.id = c.user_id
-            WHERE c.user_id = $1
-            ORDER BY c.id
-            LIMIT $2 OFFSET $3
-            "#,
-            user_id,
-            limit,
-            offset
-        )
-        .fetch_all(&db.pool)
-        .await?;
-
-        let result: Vec<LeadDto> = rows
-            .into_iter()
-            .map(|r| LeadDto {
-                id: r.id,
-                email: r.email,
-                first_name: r.first_name,
-                last_name: r.last_name,
-                phone_number: r.phone_number,
-            })
-            .collect();
-
-        Ok(result)
-    }
+    //     Ok(result)
+    // }
 
     pub async fn complete_first_login(
         db: &Database,
@@ -441,49 +469,81 @@ impl User {
 
         Ok(users)
     }
-}
 
-impl User {
-    pub async fn get_role(db: &Database, user_id: i32) -> Result<UserRole> {
-        let user = sqlx::query!("SELECT user_role FROM users WHERE id = $1", user_id)
-            .fetch_one(&db.pool)
-            .await?;
+    pub async fn get_sub_users(db: &Database, user_id: i32) -> Result<Vec<User>> {
+        let user_role = Self::get_role(db, user_id).await?;
 
-        Ok(UserRole::from(user.user_role))
-    }
+        let users = match user_role {
+            UserRole::Leader => {
+                let rows = sqlx::query!(
+                    "SELECT u.id as user_id, ui.full_name as ui_full_name, u.user_role as user_role
+                     FROM users u
+                     JOIN user_info ui ON ui.user_id = u.id"
+                )
+                .fetch_all(&db.pool)
+                .await?;
 
-    async fn is_exists(db: &Database, user: &User) -> Result<bool> {
-        let is_exists = sqlx::query!(
-            "SELECT id FROM users
-             WHERE email = $1 OR username = $2",
-            user.email,
-            user.username
-        )
-        .fetch_optional(&db.pool)
-        .await?;
+                rows.into_iter()
+                    .map(|user| User {
+                        id: Some(user.user_id),
+                        info: UserInfo {
+                            full_name: Some(user.ui_full_name),
+                            ..Default::default()
+                        },
+                        user_role: Some(UserRole::from(user.user_role)),
+                        ..Default::default()
+                    })
+                    .collect()
+            }
+            UserRole::Manager => {
+                let rows = sqlx::query!(
+                    "SELECT u.id as user_id, ui.full_name as ui_full_name, u.user_role as user_role
+                     FROM users u
+                     JOIN user_info ui ON ui.user_id = u.id
+                     WHERE u.id = $1 OR u.manager_id = $1",
+                    user_id
+                )
+                .fetch_all(&db.pool)
+                .await?;
 
-        Ok(is_exists.is_some())
-    }
+                rows.into_iter()
+                    .map(|user| User {
+                        id: Some(user.user_id),
+                        info: UserInfo {
+                            full_name: Some(user.ui_full_name),
+                            ..Default::default()
+                        },
+                        user_role: Some(UserRole::from(user.user_role)),
+                        ..Default::default()
+                    })
+                    .collect()
+            }
+            _ => {
+                let rows = sqlx::query!(
+                    "SELECT u.id as user_id, ui.full_name as ui_full_name, u.user_role as user_role
+                     FROM users u
+                     JOIN user_info ui ON ui.user_id = u.id
+                     WHERE u.id = $1",
+                    user_id
+                )
+                .fetch_all(&db.pool)
+                .await?;
 
-    async fn is_exists_by_id(db: &Database, user_id: i32) -> Result<bool> {
-        let is_exists = sqlx::query!(
-            "SELECT id FROM users
-             WHERE id = $1",
-            user_id
-        )
-        .fetch_optional(&db.pool)
-        .await?;
+                rows.into_iter()
+                    .map(|user| User {
+                        id: Some(user.user_id),
+                        info: UserInfo {
+                            full_name: Some(user.ui_full_name),
+                            ..Default::default()
+                        },
+                        user_role: Some(UserRole::from(user.user_role)),
+                        ..Default::default()
+                    })
+                    .collect()
+            }
+        };
 
-        Ok(is_exists.is_some())
-    }
-
-    async fn create_first_login_token(db: &Database, user_id: i32) -> Result<String> {
-        let mut redis_con = db.redis.get_connection().unwrap();
-
-        let token = Token::generate_token();
-        let _ = Redis::set_token_to_user(&mut redis_con, user_id as u32, &token, 120)?;
-
-        Ok(token)
+        Ok(users)
     }
 }
 

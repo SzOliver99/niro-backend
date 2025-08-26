@@ -37,7 +37,8 @@ impl Server {
                 .wrap(Logger::default())
                 .app_data(db_data.clone())
                 .service(scopes::user::user_scope())
-                .service(scopes::contact::contact_scope())
+                .service(scopes::customer::customer_scope())
+                .service(scopes::lead::lead_scope())
         })
         .bind(("0.0.0.0", port))?
         .run()

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO contacts(email, first_name, last_name, phone_number, user_id)\n             VALUES($1, $2, $3, $4, $5)\n             RETURNING id",
+  "query": "INSERT INTO customers(full_name, phone_number, email, address, user_id)\n             VALUES($1, $2, $3, $4, $5)\n             RETURNING id",
   "describe": {
     "columns": [
       {
@@ -22,5 +22,5 @@
       false
     ]
   },
-  "hash": "9b5e6711ff090d000c15644953404c5ec91f8e981e5b6942572be25e9fff8c12"
+  "hash": "b0b68bc3b649be34dd52c82cdc64e298cdb6efc381222ee465ed6e1b3d351a4e"
 }

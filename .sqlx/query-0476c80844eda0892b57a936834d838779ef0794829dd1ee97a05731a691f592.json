@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT u.id as user_id, ui.full_name as ui_full_name, u.user_role as user_role\n                     FROM users u\n                     JOIN user_info ui ON ui.user_id = u.id\n                     WHERE u.id = $1 OR u.manager_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "ui_full_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_role",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0476c80844eda0892b57a936834d838779ef0794829dd1ee97a05731a691f592"
+}

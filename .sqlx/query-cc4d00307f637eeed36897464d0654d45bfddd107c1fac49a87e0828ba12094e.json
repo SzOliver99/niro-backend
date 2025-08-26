@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO customer_leads(lead_type, inquiry_type, lead_status, handle_at, customer_id)\n             VALUES($2, $3, $4, $5, $1)\n             RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Text",
+        "Varchar",
+        "Timestamp"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "cc4d00307f637eeed36897464d0654d45bfddd107c1fac49a87e0828ba12094e"
+}

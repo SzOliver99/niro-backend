@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM contacts\n            WHERE id = $1",
+  "query": "SELECT id, full_name, phone_number, email, address, user_id\n             FROM customers\n             WHERE user_id = $1",
   "describe": {
     "columns": [
       {
@@ -10,22 +10,22 @@
       },
       {
         "ordinal": 1,
-        "name": "email",
+        "name": "full_name",
         "type_info": "Varchar"
       },
       {
         "ordinal": 2,
-        "name": "first_name",
+        "name": "phone_number",
         "type_info": "Varchar"
       },
       {
         "ordinal": 3,
-        "name": "last_name",
+        "name": "email",
         "type_info": "Varchar"
       },
       {
         "ordinal": 4,
-        "name": "phone_number",
+        "name": "address",
         "type_info": "Varchar"
       },
       {
@@ -45,8 +45,8 @@
       false,
       false,
       false,
-      false
+      true
     ]
   },
-  "hash": "a3eeafda253a86bd16197c0cc1246f82edeccd9dd9c93328d33eb72d51aa0c1d"
+  "hash": "2703444161dfefe03e321e0ea9e8f2afc795d0cba177b2b8748953b4c674ddea"
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO contact_history(p_type, time, contact_id)\n             VALUES($1, $2, $3)\n             RETURNING id",
+  "query": "SELECT id FROM customers\n             WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -11,8 +11,6 @@
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Timestamp",
         "Int4"
       ]
     },
@@ -20,5 +18,5 @@
       false
     ]
   },
-  "hash": "49aac6ca98c91d3e4635d05afac05207c1429809fa02f12ad1b23d6d3451ac83"
+  "hash": "30e38b266be10c91af4956838d885709784ac522cc7d401c4dad38ce2c7739b2"
 }
