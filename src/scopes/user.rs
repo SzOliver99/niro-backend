@@ -100,17 +100,21 @@ async fn get_users(db: web::Data<Database>, auth_token: AuthenticationToken) -> 
 
 #[derive(Deserialize, Clone, Debug)]
 struct ModifyUserInfoJson {
-    id: i32,
+    id: Option<i32>,
     email: String,
     info: UserInfo,
 }
 async fn modify_user_info(
     db: web::Data<Database>,
-    _: AuthenticationToken,
+    auth_token: AuthenticationToken,
     data: web::Json<ModifyUserInfoJson>,
 ) -> impl Responder {
     let user = User {
-        id: Some(data.id),
+        id: if data.id.is_some() {
+            data.id
+        } else {
+            Some(auth_token.id as i32)
+        },
         email: Some(data.email.clone()),
         info: data.info.clone(),
         ..Default::default()
@@ -195,7 +199,6 @@ async fn get_manager_names(
         id: data.0,
         ..Default::default()
     };
-    println!("{:?}", data.0);
 
     match UserRole::get_managers(&db, user).await {
         Ok(list) => HttpResponse::Ok().json(list),

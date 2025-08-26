@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::database::Database;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Contact {
+pub struct Lead {
     pub id: Option<i32>,
     pub email: Option<String>,
     pub first_name: Option<String>,
@@ -15,16 +15,16 @@ pub struct Contact {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ContactHistory {
+pub struct LeadHistory {
     pub id: Option<i32>,
     pub p_type: String,
     pub time: NaiveDateTime,
 }
 
-impl Contact {
-    pub async fn new(db: &Database, new_contact: Contact) -> Result<()> {
+impl Lead {
+    pub async fn new(db: &Database, new_contact: Lead) -> Result<()> {
         if Self::is_contact_exists(db, &new_contact).await? {
-            return Err(anyhow::anyhow!("contact already in the database"));
+            return Err(anyhow::anyhow!("Lead already in the database"));
         }
 
         let _contact_id = sqlx::query!(
@@ -58,10 +58,10 @@ impl Contact {
     pub async fn create_history(
         db: &Database,
         contact_id: i32,
-        history: ContactHistory,
+        history: LeadHistory,
     ) -> Result<()> {
         if !Self::is_contact_exists_by_id(db, contact_id).await? {
-            return Err(anyhow::anyhow!("contact is not in the database!"));
+            return Err(anyhow::anyhow!("Lead is not in the database!"));
         }
 
         let _history_id = sqlx::query!(
@@ -78,13 +78,13 @@ impl Contact {
         Ok(())
     }
 
-    pub async fn get_history(db: &Database, contact_id: i32) -> Result<Vec<ContactHistory>> {
+    pub async fn get_history(db: &Database, contact_id: i32) -> Result<Vec<LeadHistory>> {
         if !Self::is_contact_exists_by_id(db, contact_id).await? {
             return Err(anyhow::anyhow!("contact is not in the database!"));
         }
 
         let contact_history = sqlx::query_as!(
-            ContactHistory,
+            LeadHistory,
             "SELECT id, p_type, time FROM contact_history
              WHERE contact_id = $1",
             contact_id
@@ -96,10 +96,10 @@ impl Contact {
     }
 }
 
-impl Contact {
-    async fn is_contact_exists(db: &Database, contact: &Contact) -> Result<bool> {
+impl Lead {
+    async fn is_contact_exists(db: &Database, contact: &Lead) -> Result<bool> {
         let is_exists = sqlx::query!(
-            "SELECT id FROM contacts 
+            "SELECT id FROM contacts
              WHERE email = $1 OR phone_number = $2",
             contact.email,
             contact.phone_number

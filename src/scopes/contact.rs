@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 use crate::{
     database::Database,
-    models::{contact::Contact, user::User},
+    models::{lead::Lead, user::User},
     utils::error::ApiError,
 };
 
@@ -22,7 +22,7 @@ struct ContactJson {
     user_id: Option<i32>,
 }
 async fn create_contact(db: web::Data<Database>, data: web::Json<ContactJson>) -> impl Responder {
-    let contact = Contact {
+    let contact = Lead {
         id: None,
         email: data.email.clone(),
         first_name: data.first_name.clone(),
@@ -31,7 +31,7 @@ async fn create_contact(db: web::Data<Database>, data: web::Json<ContactJson>) -
         user_id: data.user_id,
     };
 
-    match Contact::new(&db, contact).await {
+    match Lead::new(&db, contact).await {
         Ok(_) => HttpResponse::Created().json("Registration successful!"),
         Err(e) => ApiError::from(e).error_response(),
     }

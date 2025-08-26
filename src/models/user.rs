@@ -2,14 +2,14 @@ use std::env;
 
 use anyhow::{Ok, Result};
 use redis::Commands;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de};
 use sqlx::{FromRow, prelude::Type};
 
 use crate::{
     database::Database,
     models::{
-        contact::Contact,
-        dto::{ContactDto, ManagerNameDto, UserInfoDto, UserWithInfoDto},
+        dto::{LeadDto, ManagerNameDto},
+        lead::Lead,
         user_info::UserInfo,
     },
     utils::{
@@ -138,7 +138,7 @@ impl User {
         }
     }
 
-    pub async fn get_all(db: &Database, user_id: i32) -> Result<Vec<UserWithInfoDto>> {
+    pub async fn get_all(db: &Database, user_id: i32) -> Result<Vec<User>> {
         if !User::is_exists_by_id(db, user_id).await? {
             return Err(anyhow::anyhow!("Invalid user_id"));
         }
@@ -149,8 +149,7 @@ impl User {
 
         if let UserRole::Leader = UserRole::from(user.user_role) {
             let rows = sqlx::query!(
-                r#"
-                SELECT u.id               AS user_id,
+                "SELECT u.id               AS user_id,
                        u.email            AS user_email,
                        u.username         AS user_username,
                        u.user_role        AS user_user_role,
@@ -160,34 +159,34 @@ impl User {
                        ui.phone_number    AS ui_phone_number,
                        ui.hufa_code       AS ui_hufa_code,
                        ui.agent_code      AS ui_agent_code
-                FROM users u
-                JOIN user_info ui ON ui.user_id = u.id
-                ORDER BY CASE u.user_role 
-                    WHEN 'Leader' THEN 1
-                    WHEN 'Manager' THEN 2
-                    WHEN 'Agent' THEN 3
-                    ELSE 4
-                END;
-                "#
+                  FROM users u
+                  JOIN user_info ui ON ui.user_id = u.id
+                  ORDER BY CASE u.user_role 
+                      WHEN 'Leader' THEN 1
+                      WHEN 'Manager' THEN 2
+                      WHEN 'Agent' THEN 3
+                      ELSE 4
+                  END;"
             )
             .fetch_all(&db.pool)
             .await?;
 
-            let users: Vec<UserWithInfoDto> = rows
+            let users: Vec<User> = rows
                 .into_iter()
-                .map(|row| UserWithInfoDto {
-                    id: row.user_id,
-                    email: row.user_email,
-                    username: row.user_username,
-                    role: UserRole::from(row.user_user_role),
-                    info: UserInfoDto {
-                        id: row.ui_id,
-                        full_name: row.ui_full_name,
-                        phone_number: row.ui_phone_number,
-                        hufa_code: row.ui_hufa_code,
-                        agent_code: row.ui_agent_code,
+                .map(|row| User {
+                    id: Some(row.user_id),
+                    email: Some(row.user_email),
+                    username: Some(row.user_username),
+                    user_role: Some(UserRole::from(row.user_user_role)),
+                    info: UserInfo {
+                        full_name: Some(row.ui_full_name),
+                        phone_number: Some(row.ui_phone_number),
+                        hufa_code: Some(row.ui_hufa_code),
+                        agent_code: Some(row.ui_agent_code),
+                        ..Default::default()
                     },
                     manager_id: row.user_manager_id,
+                    ..Default::default()
                 })
                 .collect();
 
@@ -197,24 +196,41 @@ impl User {
         Err(anyhow::anyhow!("User has no permission for that!"))
     }
 
-    pub async fn get_info_by_id(db: &Database, user_id: i32) -> Result<UserInfoDto> {
+    pub async fn get_info_by_id(db: &Database, user_id: i32) -> Result<User> {
         if !User::is_exists_by_id(db, user_id).await? {
             return Err(anyhow::anyhow!("Invalid user_id"));
         }
 
-        let user_info = sqlx::query!(
-            "SELECT id, full_name, phone_number, hufa_code, agent_code FROM user_info WHERE user_id = $1",
+        let row = sqlx::query!(
+            "SELECT u.id               AS user_id,
+                    u.email            AS user_email,
+                    u.username         AS user_username,
+                    u.user_role        AS user_user_role,
+                    u.manager_id       AS user_manager_id,
+                    ui.id              AS ui_id,
+                    ui.full_name       AS ui_full_name,
+                    ui.phone_number    AS ui_phone_number,
+                    ui.hufa_code       AS ui_hufa_code,
+                    ui.agent_code      AS ui_agent_code
+             FROM users u
+             JOIN user_info ui ON ui.user_id = u.id
+             WHERE user_id = $1",
             user_id
         )
-            .fetch_one(&db.pool)
-            .await?;
+        .fetch_one(&db.pool)
+        .await?;
 
-        Ok(UserInfoDto {
-            id: user_info.id,
-            full_name: user_info.full_name,
-            phone_number: user_info.phone_number,
-            hufa_code: user_info.hufa_code,
-            agent_code: user_info.agent_code,
+        Ok(User {
+            id: Some(row.user_id),
+            email: Some(row.user_email),
+            info: UserInfo {
+                full_name: Some(row.ui_full_name),
+                phone_number: Some(row.ui_phone_number),
+                hufa_code: Some(row.ui_hufa_code),
+                agent_code: Some(row.ui_agent_code),
+                ..Default::default()
+            },
+            ..Default::default()
         })
     }
 
@@ -296,13 +312,13 @@ impl User {
         Ok(())
     }
 
-    pub async fn get_contacts_by_id(db: &Database, user_id: i32) -> Result<Vec<Contact>> {
+    pub async fn get_contacts_by_id(db: &Database, user_id: i32) -> Result<Vec<Lead>> {
         if !User::is_exists_by_id(db, user_id).await? {
             return Err(anyhow::anyhow!("Invalid user_id"));
         }
 
         let contacts = sqlx::query_as!(
-            Contact,
+            Lead,
             "SELECT id, email, first_name, last_name, phone_number, user_id FROM contacts WHERE user_id = $1",
             user_id
         )
@@ -317,7 +333,7 @@ impl User {
         user_id: i32,
         limit: i64,
         offset: i64,
-    ) -> Result<Vec<ContactDto>> {
+    ) -> Result<Vec<LeadDto>> {
         if !User::is_exists_by_id(db, user_id).await? {
             return Err(anyhow::anyhow!("Invalid user_id"));
         }
@@ -338,9 +354,9 @@ impl User {
         .fetch_all(&db.pool)
         .await?;
 
-        let result: Vec<ContactDto> = rows
+        let result: Vec<LeadDto> = rows
             .into_iter()
-            .map(|r| ContactDto {
+            .map(|r| LeadDto {
                 id: r.id,
                 email: r.email,
                 first_name: r.first_name,
@@ -382,7 +398,7 @@ impl User {
         Ok(user_token)
     }
 
-    pub async fn get_manager_group(db: &Database, user_id: i32) -> Result<Vec<UserWithInfoDto>> {
+    pub async fn get_manager_group(db: &Database, user_id: i32) -> Result<Vec<User>> {
         let rows = sqlx::query!(
             r#"
             SELECT  u.id               AS user_id,
@@ -404,21 +420,22 @@ impl User {
         .fetch_all(&db.pool)
         .await?;
 
-        let users: Vec<UserWithInfoDto> = rows
+        let users: Vec<User> = rows
             .into_iter()
-            .map(|row| UserWithInfoDto {
-                id: row.user_id,
-                email: row.user_email,
-                username: row.user_username,
-                role: UserRole::from(row.user_user_role),
-                info: UserInfoDto {
-                    id: row.ui_id,
-                    full_name: row.ui_full_name,
-                    phone_number: row.ui_phone_number,
-                    hufa_code: row.ui_hufa_code,
-                    agent_code: row.ui_agent_code,
+            .map(|row| User {
+                id: Some(row.user_id),
+                email: Some(row.user_email),
+                username: Some(row.user_username),
+                user_role: Some(UserRole::from(row.user_user_role)),
+                info: UserInfo {
+                    full_name: Some(row.ui_full_name),
+                    phone_number: Some(row.ui_phone_number),
+                    hufa_code: Some(row.ui_hufa_code),
+                    agent_code: Some(row.ui_agent_code),
+                    ..Default::default()
                 },
                 manager_id: row.user_manager_id,
+                ..Default::default()
             })
             .collect();
 
