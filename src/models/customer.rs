@@ -15,7 +15,7 @@ pub struct Customer {
 }
 
 impl Customer {
-    async fn is_customer_exists(db: &Database, customer: &Customer) -> Result<bool> {
+    pub(super) async fn is_customer_exists(db: &Database, customer: &Customer) -> Result<bool> {
         let is_exists = sqlx::query!(
             "SELECT id FROM customers
              WHERE email = $1 OR phone_number = $2",
@@ -28,7 +28,7 @@ impl Customer {
         Ok(is_exists.is_some())
     }
 
-    async fn is_customer_exists_by_id(db: &Database, customer_id: i32) -> Result<bool> {
+    pub(super) async fn is_customer_exists_by_id(db: &Database, customer_id: i32) -> Result<bool> {
         let is_exists = sqlx::query!(
             "SELECT id FROM customers
              WHERE id = $1",
@@ -130,26 +130,5 @@ impl Customer {
             })
             .collect();
         Ok(customers)
-    }
-
-    pub async fn create_lead(db: &Database, contact_id: i32, lead: Lead) -> Result<()> {
-        if !Self::is_customer_exists_by_id(db, contact_id).await? {
-            return Err(anyhow::anyhow!("Customer is not in the database!"));
-        }
-
-        let _row = sqlx::query!(
-            "INSERT INTO customer_leads(lead_type, inquiry_type, lead_status, handle_at, customer_id)
-             VALUES($2, $3, $4, $5, $1)
-             RETURNING id",
-            contact_id,
-            lead.lead_type,
-            lead.inquiry_type,
-            lead.lead_status.map(|s| s.to_string()),
-            lead.handle_at
-        )
-        .fetch_one(&db.pool)
-        .await?;
-
-        Ok(())
     }
 }

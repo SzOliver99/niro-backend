@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use super::{customer::Customer, user::UserRole};
+use super::user::UserRole;
 
 #[derive(Serialize)]
 pub struct UserSummaryDto {

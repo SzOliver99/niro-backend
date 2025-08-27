@@ -1,4 +1,4 @@
-use actix_web::{web, HttpResponse, Responder, ResponseError, Scope};
+use actix_web::{HttpResponse, Responder, ResponseError, Scope, web};
 use serde::Deserialize;
 
 use crate::{database::Database, models::lead::Lead, utils::error::ApiError};
@@ -24,7 +24,7 @@ async fn create_lead(db: web::Data<Database>, data: web::Json<LeadJson>) -> impl
         ..Default::default()
     };
 
-    match Lead::create(&db, lead).await {
+    match Lead::create(&db, data.user_id, lead).await {
         Ok(_) => HttpResponse::Created().json("Registration successful!"),
         Err(e) => ApiError::from(e).error_response(),
     }

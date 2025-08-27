@@ -3,7 +3,7 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::Type;
 
-use crate::database::Database;
+use crate::{database::Database, models::customer::Customer};
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Lead {
@@ -69,7 +69,24 @@ impl Lead {
 }
 
 impl Lead {
-    pub async fn create(db: &Database, lead: Lead) -> Result<()> {
+    pub async fn create(db: &Database, customer_id: i32, lead: Lead) -> Result<()> {
+        if !Customer::is_customer_exists_by_id(db, customer_id).await? {
+            return Err(anyhow::anyhow!("Customer is not in the database!"));
+        }
+
+        let _row = sqlx::query!(
+            "INSERT INTO customer_leads(lead_type, inquiry_type, lead_status, handle_at, customer_id)
+             VALUES($2, $3, $4, $5, $1)
+             RETURNING id",
+            customer_id,
+            lead.lead_type,
+            lead.inquiry_type,
+            lead.lead_status.map(|s| s.to_string()),
+            lead.handle_at
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
         Ok(())
     }
 }
