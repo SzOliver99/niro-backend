@@ -478,7 +478,11 @@ impl User {
                 let rows = sqlx::query!(
                     "SELECT u.id as user_id, ui.full_name as ui_full_name, u.user_role as user_role
                      FROM users u
-                     JOIN user_info ui ON ui.user_id = u.id"
+                     JOIN user_info ui ON ui.user_id = u.id
+                     ORDER BY
+                        CASE WHEN u.id = $1 THEN 0 END,
+                        u.id;",
+                    user_id
                 )
                 .fetch_all(&db.pool)
                 .await?;
