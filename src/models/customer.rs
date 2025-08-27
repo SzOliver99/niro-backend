@@ -1,9 +1,11 @@
 use anyhow::{Ok, Result};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+use serde_with::skip_serializing_none;
 
-use crate::{database::Database, models::lead::Lead};
+use crate::{database::Database, models::user::User};
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Default)]
 pub struct Customer {
     pub id: Option<i32>,
     pub full_name: Option<String>,
@@ -11,6 +13,7 @@ pub struct Customer {
     pub email: Option<String>,
     pub address: Option<String>,
     pub user_id: Option<i32>,
+    pub created_by: Option<String>,
     pub leads: Vec<Customer>,
 }
 
@@ -42,20 +45,21 @@ impl Customer {
 }
 
 impl Customer {
-    pub async fn create(db: &Database, new_customer: Customer) -> Result<()> {
+    pub async fn create(db: &Database, new_customer: Customer, user: User) -> Result<()> {
         if Self::is_exists(db, &new_customer).await? {
-            return Err(anyhow::anyhow!("Lead already in the database"));
+            return Err(anyhow::anyhow!("Customer is already in the database"));
         }
 
         let _row = sqlx::query!(
-            "INSERT INTO customers(full_name, phone_number, email, address, user_id)
-             VALUES($1, $2, $3, $4, $5)
+            "INSERT INTO customers(full_name, phone_number, email, address, user_id, created_by)
+             VALUES($1, $2, $3, $4, $5, $6)
              RETURNING id",
             new_customer.full_name,
             new_customer.phone_number,
             new_customer.email,
             new_customer.address,
-            new_customer.user_id
+            new_customer.user_id,
+            user.info.full_name
         )
         .fetch_one(&db.pool)
         .await?;
@@ -73,13 +77,12 @@ impl Customer {
         .fetch_one(&db.pool)
         .await?;
         Ok(Customer {
-            id: None,
             full_name: Some(row.full_name),
             phone_number: Some(row.phone_number),
             email: Some(row.email),
             address: Some(row.address),
             user_id: row.user_id,
-            leads: vec![],
+            ..Default::default()
         })
     }
 
@@ -127,7 +130,7 @@ impl Customer {
 
     pub async fn get_all(db: &Database, user_id: i32) -> Result<Vec<Self>> {
         let row = sqlx::query!(
-            "SELECT id, full_name, phone_number, email, address, user_id
+            "SELECT id, full_name, phone_number, email, address, user_id, created_by
              FROM customers
              WHERE user_id = $1",
             user_id
@@ -144,7 +147,8 @@ impl Customer {
                 email: Some(customer.email),
                 address: Some(customer.address),
                 user_id: customer.user_id,
-                leads: vec![],
+                created_by: Some(customer.created_by),
+                ..Default::default()
             })
             .collect();
         Ok(customers)

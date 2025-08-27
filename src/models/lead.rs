@@ -1,11 +1,13 @@
 use anyhow::{Ok, Result};
 use chrono::NaiveDateTime;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+use serde_with::skip_serializing_none;
 use sqlx::prelude::Type;
 
 use crate::{database::Database, models::customer::Customer};
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Default)]
 pub struct Lead {
     pub id: Option<i32>,
     pub lead_type: Option<String>,
@@ -14,7 +16,7 @@ pub struct Lead {
     pub handle_at: Option<NaiveDateTime>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Type)]
+#[derive(Debug, Serialize, Type)]
 pub enum LeadStatus {
     Opened,
     InProgress,

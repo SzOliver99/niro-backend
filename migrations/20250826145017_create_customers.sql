@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS customers(
     phone_number VARCHAR(20) UNIQUE NOT NULL,
     email VARCHAR(254) UNIQUE NOT NULL,
     "address" VARCHAR(254) NOT NULL,
-    user_id INT REFERENCES users(id) ON DELETE SET NULL
+    user_id INT REFERENCES users(id) ON DELETE SET NULL,
+    created_by VARCHAR(254) NOT NULL,
 );
 
 CREATE TABLE IF NOT EXISTS customer_leads(

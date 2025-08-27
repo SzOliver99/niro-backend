@@ -3,6 +3,7 @@ use std::env;
 use anyhow::{Ok, Result};
 use redis::Commands;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use sqlx::{FromRow, prelude::Type};
 
 use crate::{
@@ -15,7 +16,8 @@ use crate::{
     },
 };
 
-#[derive(Debug, Serialize, Deserialize, FromRow, Default)]
+#[skip_serializing_none]
+#[derive(Debug, Serialize, FromRow, Default)]
 pub struct User {
     pub id: Option<i32>,
     pub email: Option<String>,
@@ -246,12 +248,8 @@ impl User {
         }
 
         let row = sqlx::query!(
-            "SELECT u.id               AS user_id,
-                    u.email            AS user_email,
-                    u.username         AS user_username,
+            "SELECT u.email            AS user_email,
                     u.user_role        AS user_user_role,
-                    u.manager_id       AS user_manager_id,
-                    ui.id              AS ui_id,
                     ui.full_name       AS ui_full_name,
                     ui.phone_number    AS ui_phone_number,
                     ui.hufa_code       AS ui_hufa_code,
@@ -265,7 +263,6 @@ impl User {
         .await?;
 
         Ok(User {
-            id: Some(row.user_id),
             email: Some(row.user_email),
             info: UserInfo {
                 full_name: Some(row.ui_full_name),
@@ -274,6 +271,7 @@ impl User {
                 agent_code: Some(row.ui_agent_code),
                 ..Default::default()
             },
+            user_role: Some(UserRole::from(row.user_user_role)),
             ..Default::default()
         })
     }

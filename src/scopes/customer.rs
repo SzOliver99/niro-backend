@@ -7,6 +7,7 @@ use crate::{
     models::{
         customer::Customer,
         user::{User, UserRole},
+        user_info::UserInfo,
     },
     utils::error::ApiError,
 };
@@ -26,6 +27,7 @@ struct CustomerJson {
     address: String,
     email: String,
     user_id: i32,
+    created_by: String,
 }
 async fn create_customer(db: web::Data<Database>, data: web::Json<CustomerJson>) -> impl Responder {
     let customer = Customer {
@@ -36,8 +38,15 @@ async fn create_customer(db: web::Data<Database>, data: web::Json<CustomerJson>)
         user_id: Some(data.user_id),
         ..Default::default()
     };
+    let user = User {
+        info: UserInfo {
+            full_name: Some(data.created_by.clone()),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
 
-    match Customer::create(&db, customer).await {
+    match Customer::create(&db, customer, user).await {
         Ok(_) => HttpResponse::Created().json("Creation was successful!"),
         Err(e) => ApiError::from(e).error_response(),
     }
