@@ -16,6 +16,7 @@ pub fn customer_scope() -> Scope {
         .route("/create", web::post().to(create_customer))
         .route("/get-all", web::post().to(get_user_customers_by_id))
         .route("/change/user", web::post().to(change_customer_handler))
+        .route("/delete", web::delete().to(delete_customer))
 }
 
 #[derive(Deserialize, Clone)]
@@ -76,6 +77,21 @@ async fn change_customer_handler(
     match Customer::change_handler(&db, data.user_full_name.clone(), data.customer_ids.clone())
         .await
     {
+        Ok(_) => HttpResponse::Created().json("Registration successful!"),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn delete_customer(
+    db: web::Data<Database>,
+    auth_token: AuthenticationToken,
+    data: web::Json<Vec<i32>>,
+) -> impl Responder {
+    if let Err(e) = User::require_role(&db, UserRole::Agent, auth_token.id as i32).await {
+        return ApiError::from(e).error_response();
+    }
+
+    match Customer::delete(&db, data.0).await {
         Ok(_) => HttpResponse::Created().json("Registration successful!"),
         Err(e) => ApiError::from(e).error_response(),
     }

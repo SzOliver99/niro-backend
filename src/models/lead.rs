@@ -70,7 +70,7 @@ impl Lead {
 
 impl Lead {
     pub async fn create(db: &Database, customer_id: i32, lead: Lead) -> Result<()> {
-        if !Customer::is_customer_exists_by_id(db, customer_id).await? {
+        if !Customer::is_exists_by_id(db, customer_id).await? {
             return Err(anyhow::anyhow!("Customer is not in the database!"));
         }
 

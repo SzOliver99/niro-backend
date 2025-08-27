@@ -15,7 +15,7 @@ pub struct Customer {
 }
 
 impl Customer {
-    pub(super) async fn is_customer_exists(db: &Database, customer: &Customer) -> Result<bool> {
+    pub(super) async fn is_exists(db: &Database, customer: &Customer) -> Result<bool> {
         let is_exists = sqlx::query!(
             "SELECT id FROM customers
              WHERE email = $1 OR phone_number = $2",
@@ -28,7 +28,7 @@ impl Customer {
         Ok(is_exists.is_some())
     }
 
-    pub(super) async fn is_customer_exists_by_id(db: &Database, customer_id: i32) -> Result<bool> {
+    pub(super) async fn is_exists_by_id(db: &Database, customer_id: i32) -> Result<bool> {
         let is_exists = sqlx::query!(
             "SELECT id FROM customers
              WHERE id = $1",
@@ -43,7 +43,7 @@ impl Customer {
 
 impl Customer {
     pub async fn create(db: &Database, new_customer: Customer) -> Result<()> {
-        if Self::is_customer_exists(db, &new_customer).await? {
+        if Self::is_exists(db, &new_customer).await? {
             return Err(anyhow::anyhow!("Lead already in the database"));
         }
 
@@ -104,6 +104,24 @@ impl Customer {
         )
         .execute(&db.pool)
         .await?;
+        Ok(())
+    }
+
+    pub async fn delete(db: &Database, customer_ids: Vec<i32>) -> Result<()> {
+        for customer_id in customer_ids {
+            if !Customer::is_exists_by_id(db, customer_id).await? {
+                return Err(anyhow::anyhow!("Invalid customer_id"));
+            }
+
+            sqlx::query!(
+                "DELETE FROM customers
+                 WHERE id = $1",
+                customer_id
+            )
+            .execute(&db.pool)
+            .await?;
+        }
+
         Ok(())
     }
 
