@@ -481,7 +481,11 @@ impl User {
                      JOIN user_info ui ON ui.user_id = u.id
                      ORDER BY
                         CASE WHEN u.id = $1 THEN 0 END,
-                        u.id;",
+                        CASE u.user_role 
+                            WHEN 'Leader' THEN 1
+                            WHEN 'Manager' THEN 2
+                            WHEN 'Agent' THEN 3
+                        END;",
                     user_id
                 )
                 .fetch_all(&db.pool)
