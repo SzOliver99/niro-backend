@@ -196,15 +196,15 @@ impl User {
         if let UserRole::Leader = UserRole::from(user.user_role) {
             let rows = sqlx::query!(
                 "SELECT u.id               AS user_id,
-                       u.email            AS user_email,
-                       u.username         AS user_username,
-                       u.user_role        AS user_user_role,
-                       u.manager_id       AS user_manager_id,
-                       ui.id              AS ui_id,
-                       ui.full_name       AS ui_full_name,
-                       ui.phone_number    AS ui_phone_number,
-                       ui.hufa_code       AS ui_hufa_code,
-                       ui.agent_code      AS ui_agent_code
+                        u.email            AS user_email,
+                        u.username         AS user_username,
+                        u.user_role        AS user_user_role,
+                        u.manager_id       AS user_manager_id,
+                        ui.id              AS ui_id,
+                        ui.full_name       AS ui_full_name,
+                        ui.phone_number    AS ui_phone_number,
+                        ui.hufa_code       AS ui_hufa_code,
+                        ui.agent_code      AS ui_agent_code
                   FROM users u
                   JOIN user_info ui ON ui.user_id = u.id
                   ORDER BY CASE u.user_role 

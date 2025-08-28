@@ -1,10 +1,15 @@
-use std::env;
+use std::{env, ops::Deref};
 
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, http, middleware::Logger, web};
+use base64::{
+    Engine as _, alphabet,
+    engine::{self, general_purpose},
+};
+use chacha20poly1305::{ChaCha20Poly1305, Key, KeyInit, aead::Aead};
 use env_logger::Env;
 
-use crate::{database::Database, scopes};
+use crate::{database::Database, scopes, web_data::WebData};
 
 pub struct Server;
 impl Server {
@@ -14,11 +19,22 @@ impl Server {
             env_logger::init_from_env(Env::default().default_filter_or("info"));
         }
 
+        let key_b64 = env::var("ENCRYPTION_KEY").expect("ENCRYPTION_KEY must be set!");
+        let key_bytes = general_purpose::STANDARD.decode(key_b64).unwrap();
+
         // Initialize shared DB state once at startup
         let db = Database::create_connection()
             .await
             .expect("Failed to initialize database");
-        let db_data = web::Data::new(db);
+        let key = Key::from_slice(&key_bytes);
+        let hmac_secret = env::var("HMAC_SECRET")
+            .expect("HMAC_SECRET must be set!")
+            .into_bytes();
+        let db_data = web::Data::new(WebData {
+            db,
+            key: *key,
+            hmac_secret,
+        });
 
         HttpServer::new(move || {
             let cors = Cors::default()

@@ -1,12 +1,21 @@
 -- Add migration script here
-CREATE TABLE IF NOT EXISTS customers(
+CREATE TABLE IF NOT EXISTS customers (
     id SERIAL PRIMARY KEY,
     full_name VARCHAR(254) NOT NULL,
-    phone_number VARCHAR(20) UNIQUE NOT NULL,
-    email VARCHAR(254) UNIQUE NOT NULL,
-    "address" VARCHAR(254) NOT NULL,
+
+    phone_number_enc BYTEA NOT NULL,
+    phone_number_nonce BYTEA NOT NULL,
+    phone_number_hash BYTEA UNIQUE,
+
+    email_enc BYTEA NOT NULL,
+    email_nonce BYTEA NOT NULL,
+    email_hash BYTEA UNIQUE,
+
+    address_enc BYTEA NOT NULL,
+    address_nonce BYTEA NOT NULL,
+
     user_id INT REFERENCES users(id) ON DELETE SET NULL,
-    created_by VARCHAR(254) NOT NULL,
+    created_by VARCHAR(254) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS customer_leads(

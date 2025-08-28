@@ -9,6 +9,7 @@ use crate::{
         user_info::UserInfo,
     },
     utils::error::ApiError,
+    web_data::WebData,
 };
 
 pub fn user_scope() -> Scope {
@@ -47,11 +48,11 @@ struct SignInJson {
 }
 
 async fn create_user(
-    db: web::Data<Database>,
+    web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
     data: web::Json<UserJson>,
 ) -> impl Responder {
-    if let Err(e) = User::require_role(&db, UserRole::Leader, auth_token.id as i32).await {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Leader, auth_token.id as i32).await {
         return ApiError::from(e).error_response();
     }
 
@@ -70,14 +71,14 @@ async fn create_user(
         ..Default::default()
     };
 
-    match User::create(&db, new_user).await {
+    match User::create(&web_data.db, new_user).await {
         Ok(_) => HttpResponse::Created().json("Registration successful!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
 
 async fn sign_in_via_username(
-    db: web::Data<Database>,
+    web_data: web::Data<WebData>,
     data: web::Json<SignInJson>,
 ) -> impl Responder {
     if data.username.trim().is_empty() || data.password.trim().is_empty() {
@@ -89,14 +90,17 @@ async fn sign_in_via_username(
         ..Default::default()
     };
 
-    match User::sign_in_with_username(&db, user).await {
+    match User::sign_in_with_username(&web_data.db, user).await {
         Ok(result) => HttpResponse::Ok().json(result),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
 
-async fn get_all_user(db: web::Data<Database>, auth_token: AuthenticationToken) -> impl Responder {
-    match User::get_all(&db, auth_token.id as i32).await {
+async fn get_all_user(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+) -> impl Responder {
+    match User::get_all(&web_data.db, auth_token.id as i32).await {
         Ok(users) => HttpResponse::Ok().json(users),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -109,11 +113,12 @@ struct ModifyUserInfoJson {
     info: UserInfo,
 }
 async fn modify_user_info(
-    db: web::Data<Database>,
+    web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
     data: web::Json<ModifyUserInfoJson>,
 ) -> impl Responder {
-    if let Err(e) = User::require_role(&db, UserRole::Manager, auth_token.id as i32).await {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
         return ApiError::from(e).error_response();
     }
 
@@ -128,7 +133,7 @@ async fn modify_user_info(
         ..Default::default()
     };
 
-    match User::modify_info(&db, user).await {
+    match User::modify_info(&web_data.db, user).await {
         Ok(_) => HttpResponse::Ok().json({}),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -140,11 +145,11 @@ struct ModifyUserManagerJson {
     manager_id: Option<i32>,
 }
 async fn modify_user_manager(
-    db: web::Data<Database>,
+    web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
     data: web::Json<ModifyUserManagerJson>,
 ) -> impl Responder {
-    if let Err(e) = User::require_role(&db, UserRole::Leader, auth_token.id as i32).await {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Leader, auth_token.id as i32).await {
         return ApiError::from(e).error_response();
     }
 
@@ -154,18 +159,18 @@ async fn modify_user_manager(
         ..Default::default()
     };
 
-    match User::modify_manager(&db, user).await {
+    match User::modify_manager(&web_data.db, user).await {
         Ok(_) => HttpResponse::Ok().json({}),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
 
 async fn delete_user(
-    db: web::Data<Database>,
+    web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
     data: web::Json<i32>,
 ) -> impl Responder {
-    if let Err(e) = User::require_role(&db, UserRole::Leader, auth_token.id as i32).await {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Leader, auth_token.id as i32).await {
         return ApiError::from(e).error_response();
     }
 
@@ -174,41 +179,44 @@ async fn delete_user(
         ..Default::default()
     };
 
-    match User::terminate_user(&db, user).await {
+    match User::terminate_user(&web_data.db, user).await {
         Ok(_) => HttpResponse::Ok().json({}),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
 
 async fn get_manager_group(
-    db: web::Data<Database>,
+    web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
 ) -> impl Responder {
-    match User::get_manager_group(&db, auth_token.id as i32).await {
+    match User::get_manager_group(&web_data.db, auth_token.id as i32).await {
         Ok(users) => HttpResponse::Ok().json(users),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
 
 async fn get_user_informations_by_id(
-    db: web::Data<Database>,
+    web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
 ) -> impl Responder {
-    match User::get_info_by_id(&db, auth_token.id as i32).await {
+    match User::get_info_by_id(&web_data.db, auth_token.id as i32).await {
         Ok(user) => HttpResponse::Ok().json(user),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
 
-async fn get_user_role(db: web::Data<Database>, auth_token: AuthenticationToken) -> impl Responder {
-    match User::get_role(&db, auth_token.id as i32).await {
+async fn get_user_role(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+) -> impl Responder {
+    match User::get_role(&web_data.db, auth_token.id as i32).await {
         Ok(role) => HttpResponse::Ok().json(role),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
 
 async fn get_manager_names(
-    db: web::Data<Database>,
+    web_data: web::Data<WebData>,
     data: web::Json<Option<i32>>,
 ) -> impl Responder {
     let user = User {
@@ -216,17 +224,17 @@ async fn get_manager_names(
         ..Default::default()
     };
 
-    match UserRole::get_managers(&db, user).await {
+    match UserRole::get_managers(&web_data.db, user).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
 
 async fn get_user_sub_users(
-    db: web::Data<Database>,
+    web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
 ) -> impl Responder {
-    match User::get_sub_users(&db, auth_token.id as i32).await {
+    match User::get_sub_users(&web_data.db, auth_token.id as i32).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -238,10 +246,12 @@ struct FirstLoginJson {
     token: String,
 }
 async fn finish_user_first_login(
-    db: web::Data<Database>,
+    web_data: web::Data<WebData>,
     data: web::Json<FirstLoginJson>,
 ) -> impl Responder {
-    match User::complete_first_login(&db, data.new_password.clone(), data.token.clone()).await {
+    match User::complete_first_login(&web_data.db, data.new_password.clone(), data.token.clone())
+        .await
+    {
         Ok(token) => HttpResponse::Ok().json(token),
         Err(e) => ApiError::from(e).error_response(),
     }

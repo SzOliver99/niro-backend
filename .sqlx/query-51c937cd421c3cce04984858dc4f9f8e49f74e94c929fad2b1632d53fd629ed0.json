@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, full_name, phone_number_enc, phone_number_nonce, email_enc, email_nonce, address_enc, address_nonce, user_id, created_by\n             FROM customers\n             WHERE user_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "full_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "phone_number_enc",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 3,
+        "name": "phone_number_nonce",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 4,
+        "name": "email_enc",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 5,
+        "name": "email_nonce",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 6,
+        "name": "address_enc",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 7,
+        "name": "address_nonce",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 8,
+        "name": "user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_by",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "51c937cd421c3cce04984858dc4f9f8e49f74e94c929fad2b1632d53fd629ed0"
+}

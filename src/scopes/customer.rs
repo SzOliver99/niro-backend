@@ -10,6 +10,7 @@ use crate::{
         user_info::UserInfo,
     },
     utils::error::ApiError,
+    web_data::{self, WebData},
 };
 
 pub fn customer_scope() -> Scope {
@@ -29,7 +30,10 @@ struct CustomerJson {
     user_id: i32,
     created_by: String,
 }
-async fn create_customer(db: web::Data<Database>, data: web::Json<CustomerJson>) -> impl Responder {
+async fn create_customer(
+    web_data: web::Data<WebData>,
+    data: web::Json<CustomerJson>,
+) -> impl Responder {
     let customer = Customer {
         full_name: Some(data.full_name.clone()),
         phone_number: Some(data.phone_number.clone()),
@@ -46,24 +50,34 @@ async fn create_customer(db: web::Data<Database>, data: web::Json<CustomerJson>)
         ..Default::default()
     };
 
-    match Customer::create(&db, customer, user).await {
+    match Customer::create(
+        &web_data.db,
+        &web_data.key,
+        &web_data.hmac_secret,
+        customer,
+        user,
+    )
+    .await
+    {
         Ok(_) => HttpResponse::Created().json("Creation was successful!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
 
 async fn get_user_customers_by_id(
-    db: web::Data<Database>,
+    web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
     data: web::Json<i32>,
 ) -> impl Responder {
     if data.0 != auth_token.id as i32 {
-        if let Err(e) = User::require_role(&db, UserRole::Manager, auth_token.id as i32).await {
+        if let Err(e) =
+            User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+        {
             return ApiError::from(e).error_response();
         }
     }
 
-    match Customer::get_all(&db, data.0).await {
+    match Customer::get_all(&web_data.db, &web_data.key, data.0).await {
         Ok(customers) => HttpResponse::Created().json(customers),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -75,16 +89,20 @@ struct ChangeCustomersHandlerJson {
     customer_ids: Vec<i32>,
 }
 async fn change_customer_handler(
-    db: web::Data<Database>,
+    web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
     data: web::Json<ChangeCustomersHandlerJson>,
 ) -> impl Responder {
-    if let Err(e) = User::require_role(&db, UserRole::Leader, auth_token.id as i32).await {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Leader, auth_token.id as i32).await {
         return ApiError::from(e).error_response();
     }
 
-    match Customer::change_handler(&db, data.user_full_name.clone(), data.customer_ids.clone())
-        .await
+    match Customer::change_handler(
+        &web_data.db,
+        data.user_full_name.clone(),
+        data.customer_ids.clone(),
+    )
+    .await
     {
         Ok(_) => HttpResponse::Created().json("Registration successful!"),
         Err(e) => ApiError::from(e).error_response(),
@@ -92,15 +110,15 @@ async fn change_customer_handler(
 }
 
 async fn delete_customer(
-    db: web::Data<Database>,
+    web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
     data: web::Json<Vec<i32>>,
 ) -> impl Responder {
-    if let Err(e) = User::require_role(&db, UserRole::Agent, auth_token.id as i32).await {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Agent, auth_token.id as i32).await {
         return ApiError::from(e).error_response();
     }
 
-    match Customer::delete(&db, data.0).await {
+    match Customer::delete(&web_data.db, data.0).await {
         Ok(_) => HttpResponse::Created().json("Registration successful!"),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -114,7 +132,7 @@ async fn delete_customer(
 // }
 
 // async fn list_contacts(
-//     db: web::Data<Database>,
+//     web_data: web::Data<WebData>,
 //     query: web::Query<PaginationQuery>,
 // ) -> impl Responder {
 //     let limit = query.limit.unwrap_or(20).clamp(1, 100);

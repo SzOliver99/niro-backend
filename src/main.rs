@@ -8,6 +8,7 @@ mod models;
 mod scopes;
 mod server;
 mod utils;
+mod web_data;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

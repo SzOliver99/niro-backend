@@ -1,8 +1,13 @@
 use anyhow::{Ok, Result};
+use chacha20poly1305::Key;
 use serde::Serialize;
 use serde_with::skip_serializing_none;
 
-use crate::{database::Database, models::user::User};
+use crate::{
+    database::Database,
+    models::user::User,
+    utils::encrypt::{self},
+};
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Default)]
@@ -18,12 +23,16 @@ pub struct Customer {
 }
 
 impl Customer {
-    pub(super) async fn is_exists(db: &Database, customer: &Customer) -> Result<bool> {
+    pub(super) async fn is_exists(
+        db: &Database,
+        hmac_secret: &Vec<u8>,
+        customer: &Customer,
+    ) -> Result<bool> {
         let is_exists = sqlx::query!(
             "SELECT id FROM customers
-             WHERE email = $1 OR phone_number = $2",
-            customer.email,
-            customer.phone_number
+             WHERE email_hash = $1 OR phone_number_hash = $2",
+            encrypt::hash_value(hmac_secret, &customer.email.as_ref().unwrap()),
+            encrypt::hash_value(hmac_secret, &customer.phone_number.as_ref().unwrap()),
         )
         .fetch_optional(&db.pool)
         .await?;
@@ -45,19 +54,73 @@ impl Customer {
 }
 
 impl Customer {
-    pub async fn create(db: &Database, new_customer: Customer, user: User) -> Result<()> {
-        if Self::is_exists(db, &new_customer).await? {
+    pub async fn create(
+        db: &Database,
+        key: &Key,
+        hmac_secret: &Vec<u8>,
+        new_customer: Customer,
+        user: User,
+    ) -> Result<()> {
+        if Self::is_exists(db, &hmac_secret, &new_customer).await? {
             return Err(anyhow::anyhow!("Customer is already in the database"));
         }
 
+        // Borrow inner strings, hash and encrypt without moving from new_customer
+        let (
+            email_hash,
+            phone_hash,
+            email_enc,
+            email_nonce,
+            phone_enc,
+            phone_nonce,
+            address_enc,
+            address_nonce,
+        ) = {
+            let email = new_customer
+                .email
+                .as_deref()
+                .ok_or(anyhow::anyhow!("Missing email"))?;
+            let phone = new_customer
+                .phone_number
+                .as_deref()
+                .ok_or(anyhow::anyhow!("Missing phone_number"))?;
+            let address = new_customer
+                .address
+                .as_deref()
+                .ok_or(anyhow::anyhow!("Missing address"))?;
+
+            let email_hash = encrypt::hash_value(&hmac_secret, email);
+            let phone_hash = encrypt::hash_value(&hmac_secret, phone);
+
+            let (email_enc, email_nonce) = encrypt::encrypt_value(&key, email);
+            let (phone_enc, phone_nonce) = encrypt::encrypt_value(&key, phone);
+            let (address_enc, address_nonce) = encrypt::encrypt_value(&key, address);
+
+            (
+                email_hash,
+                phone_hash,
+                email_enc,
+                email_nonce,
+                phone_enc,
+                phone_nonce,
+                address_enc,
+                address_nonce,
+            )
+        };
+
         let _row = sqlx::query!(
-            "INSERT INTO customers(full_name, phone_number, email, address, user_id, created_by)
-             VALUES($1, $2, $3, $4, $5, $6)
+            "INSERT INTO customers(full_name, phone_number_enc, phone_number_nonce, phone_number_hash, email_enc, email_nonce, email_hash, address_enc, address_nonce, user_id, created_by)
+             VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
              RETURNING id",
             new_customer.full_name,
-            new_customer.phone_number,
-            new_customer.email,
-            new_customer.address,
+            phone_enc,
+            phone_nonce,
+            phone_hash,
+            email_enc,
+            email_nonce,
+            email_hash,
+            address_enc,
+            address_nonce,
             new_customer.user_id,
             user.info.full_name
         )
@@ -69,7 +132,7 @@ impl Customer {
 
     pub async fn get(db: &Database, user_id: i32) -> Result<Self> {
         let row = sqlx::query!(
-            "SELECT full_name, phone_number, email, address, user_id 
+            "SELECT full_name, phone_number_enc, email_enc, address_enc, user_id 
              FROM customers
              WHERE id = $1",
             user_id
@@ -78,9 +141,9 @@ impl Customer {
         .await?;
         Ok(Customer {
             full_name: Some(row.full_name),
-            phone_number: Some(row.phone_number),
-            email: Some(row.email),
-            address: Some(row.address),
+            phone_number: None,
+            email: None,
+            address: None,
             user_id: row.user_id,
             ..Default::default()
         })
@@ -128,9 +191,9 @@ impl Customer {
         Ok(())
     }
 
-    pub async fn get_all(db: &Database, user_id: i32) -> Result<Vec<Self>> {
+    pub async fn get_all(db: &Database, key: &Key, user_id: i32) -> Result<Vec<Self>> {
         let row = sqlx::query!(
-            "SELECT id, full_name, phone_number, email, address, user_id, created_by
+            "SELECT id, full_name, phone_number_enc, phone_number_nonce, email_enc, email_nonce, address_enc, address_nonce, user_id, created_by
              FROM customers
              WHERE user_id = $1",
             user_id
@@ -143,9 +206,17 @@ impl Customer {
             .map(|customer| Customer {
                 id: Some(customer.id),
                 full_name: Some(customer.full_name),
-                phone_number: Some(customer.phone_number),
-                email: Some(customer.email),
-                address: Some(customer.address),
+                phone_number: encrypt::decrypt_value(
+                    key,
+                    &customer.phone_number_enc,
+                    &customer.phone_number_nonce,
+                ),
+                email: encrypt::decrypt_value(key, &customer.email_enc, &customer.email_nonce),
+                address: encrypt::decrypt_value(
+                    key,
+                    &customer.address_enc,
+                    &customer.address_nonce,
+                ),
                 user_id: customer.user_id,
                 created_by: Some(customer.created_by),
                 ..Default::default()
