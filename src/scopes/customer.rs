@@ -10,13 +10,14 @@ use crate::{
         user_info::UserInfo,
     },
     utils::error::ApiError,
-    web_data::{self, WebData},
+    web_data::WebData,
 };
 
 pub fn customer_scope() -> Scope {
     web::scope("/customer")
         .route("/create", web::post().to(create_customer))
-        .route("/get-all", web::post().to(get_user_customers_by_id))
+        .route("/get-all", web::post().to(get_customers_by_user_id))
+        .route("/get", web::post().to(get_customers_by_id))
         .route("/change/user", web::post().to(change_customer_handler))
         .route("/delete", web::delete().to(delete_customer))
 }
@@ -64,7 +65,7 @@ async fn create_customer(
     }
 }
 
-async fn get_user_customers_by_id(
+async fn get_customers_by_user_id(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
     data: web::Json<i32>,
@@ -78,6 +79,17 @@ async fn get_user_customers_by_id(
     }
 
     match Customer::get_all(&web_data.db, &web_data.key, data.0).await {
+        Ok(customers) => HttpResponse::Created().json(customers),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_customers_by_id(
+    web_data: web::Data<WebData>,
+    _: AuthenticationToken,
+    data: web::Json<i32>,
+) -> impl Responder {
+    match Customer::get_by_id(&web_data.db, &web_data.key, data.0).await {
         Ok(customers) => HttpResponse::Created().json(customers),
         Err(e) => ApiError::from(e).error_response(),
     }

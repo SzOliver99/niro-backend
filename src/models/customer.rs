@@ -37,6 +37,15 @@ impl Customer {
         .fetch_optional(&db.pool)
         .await?;
 
+        println!(
+            "{:?}",
+            encrypt::hash_value(hmac_secret, &customer.email.as_ref().unwrap())
+        );
+        println!(
+            "{:?}",
+            encrypt::hash_value(hmac_secret, &customer.phone_number.as_ref().unwrap())
+        );
+
         Ok(is_exists.is_some())
     }
 
@@ -130,9 +139,9 @@ impl Customer {
         Ok(())
     }
 
-    pub async fn get(db: &Database, user_id: i32) -> Result<Self> {
+    pub async fn get_by_id(db: &Database, key: &Key, user_id: i32) -> Result<Self> {
         let row = sqlx::query!(
-            "SELECT full_name, phone_number_enc, email_enc, address_enc, user_id 
+            "SELECT full_name, phone_number_enc, phone_number_nonce, email_enc, email_nonce, address_enc, address_nonce, user_id 
              FROM customers
              WHERE id = $1",
             user_id
@@ -141,12 +150,50 @@ impl Customer {
         .await?;
         Ok(Customer {
             full_name: Some(row.full_name),
-            phone_number: None,
-            email: None,
-            address: None,
+            phone_number: encrypt::decrypt_value(
+                key,
+                &row.phone_number_enc,
+                &row.phone_number_nonce,
+            ),
+            email: encrypt::decrypt_value(key, &row.email_enc, &row.email_nonce),
+            address: encrypt::decrypt_value(key, &row.address_enc, &row.address_nonce),
             user_id: row.user_id,
             ..Default::default()
         })
+    }
+
+    pub async fn get_all(db: &Database, key: &Key, user_id: i32) -> Result<Vec<Self>> {
+        let row = sqlx::query!(
+            "SELECT id, full_name, phone_number_enc, phone_number_nonce, email_enc, email_nonce, address_enc, address_nonce, user_id, created_by
+             FROM customers
+             WHERE user_id = $1",
+            user_id
+        )
+        .fetch_all(&db.pool)
+        .await?;
+
+        let customers: Vec<Customer> = row
+            .into_iter()
+            .map(|customer| Customer {
+                id: Some(customer.id),
+                full_name: Some(customer.full_name),
+                phone_number: encrypt::decrypt_value(
+                    key,
+                    &customer.phone_number_enc,
+                    &customer.phone_number_nonce,
+                ),
+                email: encrypt::decrypt_value(key, &customer.email_enc, &customer.email_nonce),
+                address: encrypt::decrypt_value(
+                    key,
+                    &customer.address_enc,
+                    &customer.address_nonce,
+                ),
+                user_id: customer.user_id,
+                created_by: Some(customer.created_by),
+                ..Default::default()
+            })
+            .collect();
+        Ok(customers)
     }
 
     pub async fn change_handler(
@@ -189,39 +236,5 @@ impl Customer {
         }
 
         Ok(())
-    }
-
-    pub async fn get_all(db: &Database, key: &Key, user_id: i32) -> Result<Vec<Self>> {
-        let row = sqlx::query!(
-            "SELECT id, full_name, phone_number_enc, phone_number_nonce, email_enc, email_nonce, address_enc, address_nonce, user_id, created_by
-             FROM customers
-             WHERE user_id = $1",
-            user_id
-        )
-        .fetch_all(&db.pool)
-        .await?;
-
-        let customers: Vec<Customer> = row
-            .into_iter()
-            .map(|customer| Customer {
-                id: Some(customer.id),
-                full_name: Some(customer.full_name),
-                phone_number: encrypt::decrypt_value(
-                    key,
-                    &customer.phone_number_enc,
-                    &customer.phone_number_nonce,
-                ),
-                email: encrypt::decrypt_value(key, &customer.email_enc, &customer.email_nonce),
-                address: encrypt::decrypt_value(
-                    key,
-                    &customer.address_enc,
-                    &customer.address_nonce,
-                ),
-                user_id: customer.user_id,
-                created_by: Some(customer.created_by),
-                ..Default::default()
-            })
-            .collect();
-        Ok(customers)
     }
 }
