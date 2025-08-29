@@ -17,8 +17,9 @@ pub fn user_scope() -> Scope {
         .route("/register", web::post().to(create_user))
         .route("/login/username", web::post().to(sign_in_via_username))
         .route("/role", web::get().to(get_user_role))
+        .route("/list", web::get().to(get_users))
         .route("/list/by-id", web::post().to(get_users_by_id))
-        .route("/sub-users", web::get().to(get_user_sub_users))
+        .route("/sub-users", web::post().to(get_user_sub_users))
         .route("/manager", web::put().to(modify_user_manager))
         .route("/delete", web::delete().to(delete_user))
         .route(
@@ -92,35 +93,38 @@ async fn sign_in_via_username(
     }
 }
 
+async fn get_users(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Leader, auth_token.id as i32).await {
+        return ApiError::from(e).error_response();
+    }
+
+    match User::get_users(&web_data.db, auth_token.id as i32).await {
+        Ok(users) => HttpResponse::Ok().json(users),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
 async fn get_users_by_id(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
     data: web::Json<Option<i32>>,
 ) -> impl Responder {
-    match data.0 {
-        Some(user_id) => {
-            if let Err(e) =
-                User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
-            {
-                return ApiError::from(e).error_response();
-            }
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
 
-            match User::get_users_by_id(&web_data.db, user_id).await {
-                Ok(users) => HttpResponse::Ok().json(users),
-                Err(e) => ApiError::from(e).error_response(),
-            }
-        }
-        None => {
-            if let Err(e) =
-                User::require_role(&web_data.db, UserRole::Leader, auth_token.id as i32).await
-            {
-                return ApiError::from(e).error_response();
-            }
-            match User::get_users(&web_data.db, auth_token.id as i32).await {
-                Ok(users) => HttpResponse::Ok().json(users),
-                Err(e) => ApiError::from(e).error_response(),
-            }
-        }
+    let user_id = match data.0 {
+        Some(id) => id,
+        None => auth_token.id as i32,
+    };
+
+    match User::get_users_by_id(&web_data.db, user_id).await {
+        Ok(users) => HttpResponse::Ok().json(users),
+        Err(e) => ApiError::from(e).error_response(),
     }
 }
 
@@ -241,8 +245,9 @@ async fn get_manager_names(
 async fn get_user_sub_users(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
+    data: web::Json<String>,
 ) -> impl Responder {
-    match User::get_sub_users(&web_data.db, auth_token.id as i32).await {
+    match User::get_sub_users(&web_data.db, auth_token.id as i32, data.0).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }

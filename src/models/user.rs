@@ -451,51 +451,7 @@ impl User {
         Ok(user_token)
     }
 
-    pub async fn get_manager_group(db: &Database, user_id: i32) -> Result<Vec<User>> {
-        let rows = sqlx::query!(
-            r#"
-            SELECT  u.id               AS user_id,
-                    u.email            AS user_email,
-                    u.username         AS user_username,
-                    u.user_role        AS user_user_role,
-                    u.manager_id       AS user_manager_id,
-                    ui.id              AS ui_id,
-                    ui.full_name       AS ui_full_name,
-                    ui.phone_number    AS ui_phone_number,
-                    ui.hufa_code       AS ui_hufa_code,
-                    ui.agent_code      AS ui_agent_code
-            FROM users u
-            JOIN user_info ui ON ui.user_id = u.id
-            WHERE u.manager_id = $1
-            "#,
-            user_id
-        )
-        .fetch_all(&db.pool)
-        .await?;
-
-        let users: Vec<User> = rows
-            .into_iter()
-            .map(|row| User {
-                id: Some(row.user_id),
-                email: Some(row.user_email),
-                username: Some(row.user_username),
-                user_role: Some(UserRole::from(row.user_user_role)),
-                info: UserInfo {
-                    full_name: Some(row.ui_full_name),
-                    phone_number: Some(row.ui_phone_number),
-                    hufa_code: Some(row.ui_hufa_code),
-                    agent_code: Some(row.ui_agent_code),
-                    ..Default::default()
-                },
-                manager_id: row.user_manager_id,
-                ..Default::default()
-            })
-            .collect();
-
-        Ok(users)
-    }
-
-    pub async fn get_sub_users(db: &Database, user_id: i32) -> Result<Vec<User>> {
+    pub async fn get_sub_users(db: &Database, user_id: i32, min_role: String) -> Result<Vec<User>> {
         let user_role = Self::get_role(db, user_id).await?;
 
         let users = match user_role {
@@ -504,6 +460,11 @@ impl User {
                     "SELECT u.id as user_id, ui.full_name as ui_full_name, u.user_role as user_role
                      FROM users u
                      JOIN user_info ui ON ui.user_id = u.id
+                     WHERE (
+                        ($2 = 'Leader' AND u.user_role = 'Leader')
+                        OR ($2 = 'Manager' AND u.user_role IN ('Manager', 'Leader'))
+                        OR ($2 = 'Any')
+                     )
                      ORDER BY
                         CASE WHEN u.id = $1 THEN 0 END,
                         CASE u.user_role 
@@ -511,7 +472,8 @@ impl User {
                             WHEN 'Manager' THEN 2
                             WHEN 'Agent' THEN 3
                         END;",
-                    user_id
+                    user_id,
+                    min_role
                 )
                 .fetch_all(&db.pool)
                 .await?;
@@ -533,8 +495,13 @@ impl User {
                     "SELECT u.id as user_id, ui.full_name as ui_full_name, u.user_role as user_role
                      FROM users u
                      JOIN user_info ui ON ui.user_id = u.id
-                     WHERE u.id = $1 OR u.manager_id = $1",
-                    user_id
+                     WHERE u.id = $1 OR u.manager_id = $1 AND (
+                        ($2 = 'Leader' AND u.user_role = 'Leader')
+                        OR ($2 = 'Manager' AND u.user_role IN ('Manager', 'Leader'))
+                        OR ($2 = 'Any')
+                     )",
+                    user_id,
+                    min_role
                 )
                 .fetch_all(&db.pool)
                 .await?;
