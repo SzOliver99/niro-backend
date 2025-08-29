@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT u.id               AS user_id,\n                        u.email            AS user_email,\n                        u.username         AS user_username,\n                        u.user_role        AS user_user_role,\n                        u.manager_id       AS user_manager_id,\n                        ui.id              AS ui_id,\n                        ui.full_name       AS ui_full_name,\n                        ui.phone_number    AS ui_phone_number,\n                        ui.hufa_code       AS ui_hufa_code,\n                        ui.agent_code      AS ui_agent_code\n                  FROM users u\n                  JOIN user_info ui ON ui.user_id = u.id\n                  ORDER BY CASE u.user_role \n                      WHEN 'Leader' THEN 1\n                      WHEN 'Manager' THEN 2\n                      WHEN 'Agent' THEN 3\n                      ELSE 4\n                  END;",
+  "query": "SELECT u.id               AS user_id,\n                    u.email            AS user_email,\n                    u.username         AS user_username,\n                    u.user_role        AS user_user_role,\n                    u.manager_id       AS user_manager_id,\n                    ui.id              AS ui_id,\n                    ui.full_name       AS ui_full_name,\n                    ui.phone_number    AS ui_phone_number,\n                    ui.hufa_code       AS ui_hufa_code,\n                    ui.agent_code      AS ui_agent_code\n              FROM users u\n              JOIN user_info ui ON ui.user_id = u.id\n              ORDER BY CASE u.user_role\n                  WHEN 'Leader' THEN 1\n                  WHEN 'Manager' THEN 2\n                  WHEN 'Agent' THEN 3\n              END;",
   "describe": {
     "columns": [
       {
@@ -70,5 +70,5 @@
       false
     ]
   },
-  "hash": "21a59987bf04b4f44f84a4f6aa5b3b1ccd2bc4d0e5c6a5928b879db72cb87841"
+  "hash": "f801cfd009aba2fce298607fa549eb1ed1552e275873f8292082a706782ab3a9"
 }

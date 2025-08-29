@@ -37,15 +37,6 @@ impl Customer {
         .fetch_optional(&db.pool)
         .await?;
 
-        println!(
-            "{:?}",
-            encrypt::hash_value(hmac_secret, &customer.email.as_ref().unwrap())
-        );
-        println!(
-            "{:?}",
-            encrypt::hash_value(hmac_secret, &customer.phone_number.as_ref().unwrap())
-        );
-
         Ok(is_exists.is_some())
     }
 
@@ -71,7 +62,7 @@ impl Customer {
         user: User,
     ) -> Result<()> {
         if Self::is_exists(db, &hmac_secret, &new_customer).await? {
-            return Err(anyhow::anyhow!("Customer is already in the database"));
+            return Err(anyhow::anyhow!("Az ügyfél már szerepel az adatbázisban."));
         }
 
         // Borrow inner strings, hash and encrypt without moving from new_customer
@@ -85,18 +76,9 @@ impl Customer {
             address_enc,
             address_nonce,
         ) = {
-            let email = new_customer
-                .email
-                .as_deref()
-                .ok_or(anyhow::anyhow!("Missing email"))?;
-            let phone = new_customer
-                .phone_number
-                .as_deref()
-                .ok_or(anyhow::anyhow!("Missing phone_number"))?;
-            let address = new_customer
-                .address
-                .as_deref()
-                .ok_or(anyhow::anyhow!("Missing address"))?;
+            let email = new_customer.email.as_deref().unwrap();
+            let phone = new_customer.phone_number.as_deref().unwrap();
+            let address = new_customer.address.as_deref().unwrap();
 
             let email_hash = encrypt::hash_value(&hmac_secret, email);
             let phone_hash = encrypt::hash_value(&hmac_secret, phone);
@@ -223,7 +205,7 @@ impl Customer {
     pub async fn delete(db: &Database, customer_ids: Vec<i32>) -> Result<()> {
         for customer_id in customer_ids {
             if !Customer::is_exists_by_id(db, customer_id).await? {
-                return Err(anyhow::anyhow!("Invalid customer_id"));
+                return Err(anyhow::anyhow!("Nem létező ügyfél"));
             }
 
             sqlx::query!(

@@ -17,9 +17,8 @@ pub fn user_scope() -> Scope {
         .route("/register", web::post().to(create_user))
         .route("/login/username", web::post().to(sign_in_via_username))
         .route("/role", web::get().to(get_user_role))
-        .route("/all", web::get().to(get_all_user))
+        .route("/list/by-id", web::post().to(get_users_by_id))
         .route("/sub-users", web::get().to(get_user_sub_users))
-        .route("/managers/group", web::get().to(get_manager_group))
         .route("/manager", web::put().to(modify_user_manager))
         .route("/delete", web::delete().to(delete_user))
         .route(
@@ -81,9 +80,6 @@ async fn sign_in_via_username(
     web_data: web::Data<WebData>,
     data: web::Json<SignInJson>,
 ) -> impl Responder {
-    if data.username.trim().is_empty() || data.password.trim().is_empty() {
-        return ApiError::Validation("username and password are required".into()).error_response();
-    }
     let user = User {
         username: Some(data.username.clone()),
         password: Some(data.password.clone()),
@@ -96,13 +92,35 @@ async fn sign_in_via_username(
     }
 }
 
-async fn get_all_user(
+async fn get_users_by_id(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
+    data: web::Json<Option<i32>>,
 ) -> impl Responder {
-    match User::get_all(&web_data.db, auth_token.id as i32).await {
-        Ok(users) => HttpResponse::Ok().json(users),
-        Err(e) => ApiError::from(e).error_response(),
+    match data.0 {
+        Some(user_id) => {
+            if let Err(e) =
+                User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+            {
+                return ApiError::from(e).error_response();
+            }
+
+            match User::get_users_by_id(&web_data.db, user_id).await {
+                Ok(users) => HttpResponse::Ok().json(users),
+                Err(e) => ApiError::from(e).error_response(),
+            }
+        }
+        None => {
+            if let Err(e) =
+                User::require_role(&web_data.db, UserRole::Leader, auth_token.id as i32).await
+            {
+                return ApiError::from(e).error_response();
+            }
+            match User::get_users(&web_data.db, auth_token.id as i32).await {
+                Ok(users) => HttpResponse::Ok().json(users),
+                Err(e) => ApiError::from(e).error_response(),
+            }
+        }
     }
 }
 
@@ -179,18 +197,8 @@ async fn delete_user(
         ..Default::default()
     };
 
-    match User::terminate_user(&web_data.db, user).await {
+    match User::delete(&web_data.db, user).await {
         Ok(_) => HttpResponse::Ok().json({}),
-        Err(e) => ApiError::from(e).error_response(),
-    }
-}
-
-async fn get_manager_group(
-    web_data: web::Data<WebData>,
-    auth_token: AuthenticationToken,
-) -> impl Responder {
-    match User::get_manager_group(&web_data.db, auth_token.id as i32).await {
-        Ok(users) => HttpResponse::Ok().json(users),
         Err(e) => ApiError::from(e).error_response(),
     }
 }

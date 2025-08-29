@@ -67,7 +67,7 @@ impl User {
         if user_role >= min_role {
             return Ok(());
         }
-        Err(anyhow::anyhow!("User has no permission!"))
+        Err(anyhow::anyhow!("Ehez a folyamathoz nincs jogosultságod!"))
     }
 
     async fn is_exists(db: &Database, user: &User) -> Result<bool> {
@@ -107,22 +107,9 @@ impl User {
 
 impl User {
     pub async fn create(db: &Database, new_user: User) -> Result<()> {
-        if new_user.email.is_none()
-            || new_user.username.is_none()
-            || new_user.password.is_none()
-            || new_user.info.full_name.is_none()
-            || new_user.info.phone_number.is_none()
-            || new_user.info.hufa_code.is_none()
-            || new_user.info.agent_code.is_none()
-        {
-            return Err(anyhow::anyhow!(
-                "All fields (email, username, password, full_name, phone_number, hufa_code, agent_code) are required"
-            ));
-        }
-
         if User::is_exists(db, &new_user).await? {
             return Err(anyhow::anyhow!(
-                "User with this email or username already exists"
+                "Ez az e-mail cím vagy felhasználónév már létezik."
             ));
         }
 
@@ -166,7 +153,7 @@ impl User {
         .await?;
 
         let Some(hashed_user) = &user_data else {
-            return Err(anyhow::anyhow!("User not found"));
+            return Err(anyhow::anyhow!("Felhasználó nem található"));
         };
 
         if password_hashing::verify_password(&user.password.unwrap(), &hashed_user.password) {
@@ -180,71 +167,111 @@ impl User {
                 generate_jwt_token(hashed_user.id as usize, env::var("AUTH_SECRET").unwrap()).await,
             ))
         } else {
-            Err(anyhow::anyhow!("Incorrect password"))
+            Err(anyhow::anyhow!("Helytelen jelszó!"))
         }
     }
 
-    pub async fn get_all(db: &Database, user_id: i32) -> Result<Vec<User>> {
+    pub async fn get_users(db: &Database, user_id: i32) -> Result<Vec<User>> {
         if !User::is_exists_by_id(db, user_id).await? {
-            return Err(anyhow::anyhow!("Invalid user_id"));
+            return Err(anyhow::anyhow!("Felhasználó nem létezik"));
         }
 
-        let user = sqlx::query!("SELECT user_role FROM users WHERE id = $1", user_id)
-            .fetch_one(&db.pool)
-            .await?;
+        let rows = sqlx::query!(
+            "SELECT u.id               AS user_id,
+                    u.email            AS user_email,
+                    u.username         AS user_username,
+                    u.user_role        AS user_user_role,
+                    u.manager_id       AS user_manager_id,
+                    ui.id              AS ui_id,
+                    ui.full_name       AS ui_full_name,
+                    ui.phone_number    AS ui_phone_number,
+                    ui.hufa_code       AS ui_hufa_code,
+                    ui.agent_code      AS ui_agent_code
+              FROM users u
+              JOIN user_info ui ON ui.user_id = u.id
+              ORDER BY CASE u.user_role
+                  WHEN 'Leader' THEN 1
+                  WHEN 'Manager' THEN 2
+                  WHEN 'Agent' THEN 3
+              END;"
+        )
+        .fetch_all(&db.pool)
+        .await?;
 
-        if let UserRole::Leader = UserRole::from(user.user_role) {
-            let rows = sqlx::query!(
-                "SELECT u.id               AS user_id,
-                        u.email            AS user_email,
-                        u.username         AS user_username,
-                        u.user_role        AS user_user_role,
-                        u.manager_id       AS user_manager_id,
-                        ui.id              AS ui_id,
-                        ui.full_name       AS ui_full_name,
-                        ui.phone_number    AS ui_phone_number,
-                        ui.hufa_code       AS ui_hufa_code,
-                        ui.agent_code      AS ui_agent_code
-                  FROM users u
-                  JOIN user_info ui ON ui.user_id = u.id
-                  ORDER BY CASE u.user_role 
-                      WHEN 'Leader' THEN 1
-                      WHEN 'Manager' THEN 2
-                      WHEN 'Agent' THEN 3
-                      ELSE 4
-                  END;"
-            )
-            .fetch_all(&db.pool)
-            .await?;
-
-            let users: Vec<User> = rows
-                .into_iter()
-                .map(|row| User {
-                    id: Some(row.user_id),
-                    email: Some(row.user_email),
-                    username: Some(row.user_username),
-                    user_role: Some(UserRole::from(row.user_user_role)),
-                    info: UserInfo {
-                        full_name: Some(row.ui_full_name),
-                        phone_number: Some(row.ui_phone_number),
-                        hufa_code: Some(row.ui_hufa_code),
-                        agent_code: Some(row.ui_agent_code),
-                        ..Default::default()
-                    },
-                    manager_id: row.user_manager_id,
+        let users = rows
+            .into_iter()
+            .map(|row| User {
+                id: Some(row.user_id),
+                email: Some(row.user_email),
+                username: Some(row.user_username),
+                user_role: Some(UserRole::from(row.user_user_role)),
+                info: UserInfo {
+                    full_name: Some(row.ui_full_name),
+                    phone_number: Some(row.ui_phone_number),
+                    hufa_code: Some(row.ui_hufa_code),
+                    agent_code: Some(row.ui_agent_code),
                     ..Default::default()
-                })
-                .collect();
+                },
+                manager_id: row.user_manager_id,
+                ..Default::default()
+            })
+            .collect();
+        Ok(users)
+    }
 
-            return Ok(users);
+    pub async fn get_users_by_id(db: &Database, user_id: i32) -> Result<Vec<User>> {
+        if !User::is_exists_by_id(db, user_id).await? {
+            return Err(anyhow::anyhow!("Felhasználó nem létezik"));
         }
 
-        Err(anyhow::anyhow!("User has no permission for that!"))
+        let rows = sqlx::query!(
+            "SELECT u.id               AS user_id,
+                    u.email            AS user_email,
+                    u.username         AS user_username,
+                    u.user_role        AS user_user_role,
+                    u.manager_id       AS user_manager_id,
+                    ui.id              AS ui_id,
+                    ui.full_name       AS ui_full_name,
+                    ui.phone_number    AS ui_phone_number,
+                    ui.hufa_code       AS ui_hufa_code,
+                    ui.agent_code      AS ui_agent_code
+              FROM users u
+              JOIN user_info ui ON ui.user_id = u.id
+              WHERE u.manager_id = $1
+              ORDER BY CASE u.user_role
+                  WHEN 'Leader' THEN 1
+                  WHEN 'Manager' THEN 2
+                  WHEN 'Agent' THEN 3
+              END;",
+            user_id
+        )
+        .fetch_all(&db.pool)
+        .await?;
+
+        let users = rows
+            .into_iter()
+            .map(|row| User {
+                id: Some(row.user_id),
+                email: Some(row.user_email),
+                username: Some(row.user_username),
+                user_role: Some(UserRole::from(row.user_user_role)),
+                info: UserInfo {
+                    full_name: Some(row.ui_full_name),
+                    phone_number: Some(row.ui_phone_number),
+                    hufa_code: Some(row.ui_hufa_code),
+                    agent_code: Some(row.ui_agent_code),
+                    ..Default::default()
+                },
+                manager_id: row.user_manager_id,
+                ..Default::default()
+            })
+            .collect();
+        Ok(users)
     }
 
     pub async fn get_info_by_id(db: &Database, user_id: i32) -> Result<User> {
         if !User::is_exists_by_id(db, user_id).await? {
-            return Err(anyhow::anyhow!("Invalid user_id"));
+            return Err(anyhow::anyhow!("Felhasználó nem létezik"));
         }
 
         let row = sqlx::query!(
@@ -338,7 +365,7 @@ impl User {
         Ok(())
     }
 
-    pub async fn terminate_user(db: &Database, user: User) -> Result<()> {
+    pub async fn delete(db: &Database, user: User) -> Result<()> {
         if !User::is_exists_by_id(db, user.id.unwrap()).await? {
             return Err(anyhow::anyhow!("Invalid user_id"));
         }
