@@ -18,7 +18,6 @@ pub struct Customer {
     pub address: Option<String>,
     pub user_id: Option<i32>,
     pub created_by: Option<String>,
-    pub leads: Vec<Customer>,
 }
 
 impl Customer {

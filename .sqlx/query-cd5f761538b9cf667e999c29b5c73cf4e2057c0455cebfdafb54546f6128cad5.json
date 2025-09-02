@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE user_dates\n             SET is_completed = $2\n             WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cd5f761538b9cf667e999c29b5c73cf4e2057c0455cebfdafb54546f6128cad5"
+}

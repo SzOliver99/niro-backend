@@ -127,7 +127,7 @@ async fn delete_lead(
     }
 
     match Lead::delete(&web_data.db, data.0).await {
-        Ok(_) => HttpResponse::Created().json("Címanyag sikeresen létrehozva!"),
+        Ok(_) => HttpResponse::Created().json("Címanyag(ok) sikeresen létrehozva!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
