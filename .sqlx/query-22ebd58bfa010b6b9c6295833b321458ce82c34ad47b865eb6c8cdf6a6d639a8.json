@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO customer_leads(lead_type, inquiry_type, lead_status, customer_id, user_id, created_by)\n             VALUES($2, $3, $4, $1, $5, $6)\n             RETURNING id",
+  "query": "INSERT INTO customer_leads(lead_type, inquiry_type, lead_status, customer_id, user_id, created_by)\n             VALUES($1,$2, $3, $4, $5, $6)\n             RETURNING id",
   "describe": {
     "columns": [
       {
@@ -11,10 +11,10 @@
     ],
     "parameters": {
       "Left": [
-        "Int4",
         "Text",
         "Text",
         "Varchar",
+        "Int4",
         "Int4",
         "Varchar"
       ]
@@ -23,5 +23,5 @@
       false
     ]
   },
-  "hash": "3b07d0f653f286b2e9a120da86279122a44974bdad706312f6a52a29fbd26a46"
+  "hash": "22ebd58bfa010b6b9c6295833b321458ce82c34ad47b865eb6c8cdf6a6d639a8"
 }
