@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::extractors::authentication_token::Claims;
 
 pub async fn generate_jwt_token(id: usize, secret: String) -> String {
-    let exp: usize = (chrono::Utc::now() + chrono::Duration::hours(1)).timestamp() as usize;
+    let exp: usize = (chrono::Utc::now() + chrono::Duration::hours(3)).timestamp() as usize;
     let claims: Claims = Claims { id, exp };
     let token = encode(
         &Header::default(),
