@@ -24,10 +24,17 @@ CREATE TABLE IF NOT EXISTS customer_leads(
     inquiry_type TEXT NOT NULL,
     lead_status VARCHAR(20) NOT NULL,
     handle_at TIMESTAMP NOT NULL,
-    customer_id INT NOT NULL REFERENCES customers(id) ON DELETE CASCADE
+    customer_id INT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+
+    user_id INT REFERENCES users(id) ON DELETE SET NULL,
+    created_by VARCHAR(254) NOT NULL,
     CONSTRAINT leads_lead_status_check CHECK (lead_status IN ('Opened', 'InProgress', 'Closed'))
 );
 
--- Indexes for performance
+-- Indexes for performance and search
 CREATE INDEX IF NOT EXISTS idx_customers_user_id ON customers (user_id);
+CREATE INDEX IF NOT EXISTS idx_customers_email_hash ON customers (email_hash);
+CREATE INDEX IF NOT EXISTS idx_customers_phone_number_hash ON customers (phone_number_hash);
+
 CREATE INDEX IF NOT EXISTS idx_customer_leads_customer_id ON customer_leads (customer_id);
+CREATE INDEX IF NOT EXISTS idx_customer_leads_user_id ON customer_leads (user_id);

@@ -1,10 +1,15 @@
 use anyhow::{Ok, Result};
+use chacha20poly1305::Key;
 use chrono::NaiveDateTime;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use sqlx::prelude::Type;
 
-use crate::{database::Database, models::customer::Customer};
+use crate::{
+    database::Database,
+    models::{customer::Customer, dto::LeadListItemDto},
+    utils::encrypt,
+};
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Default)]
@@ -16,7 +21,7 @@ pub struct Lead {
     pub handle_at: Option<NaiveDateTime>,
 }
 
-#[derive(Debug, Serialize, Type)]
+#[derive(Debug, Serialize, Deserialize, Type, Clone)]
 pub enum LeadStatus {
     Opened,
     InProgress,
@@ -45,7 +50,7 @@ impl From<String> for LeadStatus {
 }
 
 impl Lead {
-    async fn is_customer_exists(db: &Database, lead: &Lead) -> Result<bool> {
+    async fn is_exists(db: &Database, lead: &Lead) -> Result<bool> {
         let is_exists = sqlx::query!(
             "SELECT id FROM customer_leads
              WHERE inquiry_type = $1",
@@ -57,7 +62,7 @@ impl Lead {
         Ok(is_exists.is_some())
     }
 
-    async fn is_lead_exists_by_id(db: &Database, lead_id: i32) -> Result<bool> {
+    async fn is_exists_by_id(db: &Database, lead_id: i32) -> Result<bool> {
         let is_exists = sqlx::query!(
             "SELECT id FROM customer_leads
              WHERE id = $1",
@@ -71,23 +76,117 @@ impl Lead {
 }
 
 impl Lead {
-    pub async fn create(db: &Database, customer_id: i32, lead: Lead) -> Result<()> {
-        if !Customer::is_exists_by_id(db, customer_id).await? {
-            return Err(anyhow::anyhow!("Az ügyfél nincs az adatbázisban."));
+    pub async fn create(
+        db: &Database,
+        key: &Key,
+        hmac_secret: &Vec<u8>,
+        customer: Customer,
+        lead: Lead,
+    ) -> Result<()> {
+        let row = sqlx::query!(
+            "SELECT id FROM customers
+             WHERE email_hash = $1 OR phone_number_hash = $2",
+            encrypt::hash_value(hmac_secret, &customer.email.as_ref().unwrap()),
+            encrypt::hash_value(hmac_secret, &customer.phone_number.as_ref().unwrap()),
+        )
+        .fetch_optional(&db.pool)
+        .await?;
+
+        if row.is_none() {
+            Customer::create(db, key, hmac_secret, customer.clone())
+                .await
+                .unwrap();
         }
 
         let _row = sqlx::query!(
-            "INSERT INTO customer_leads(lead_type, inquiry_type, lead_status, handle_at, customer_id)
-             VALUES($2, $3, $4, $5, $1)
+            "INSERT INTO customer_leads(lead_type, inquiry_type, lead_status, handle_at, customer_id, user_id, created_by)
+             VALUES($2, $3, $4, $5, $1, $6, $7)
              RETURNING id",
-            customer_id,
+            row.unwrap().id,
             lead.lead_type,
             lead.inquiry_type,
             lead.lead_status.map(|s| s.to_string()),
-            lead.handle_at
+            lead.handle_at,
+            customer.user_id,
+            customer.created_by
         )
         .fetch_one(&db.pool)
         .await?;
+
+        Ok(())
+    }
+
+    pub async fn get_all(db: &Database, key: &Key, user_id: i32) -> Result<Vec<LeadListItemDto>> {
+        let rows = sqlx::query!(
+            "SELECT c.full_name, c.phone_number_enc, c.phone_number_nonce, c.email_enc, c.email_nonce, c.address_enc, c.address_nonce, c.created_by, l.id, l.lead_type, l.inquiry_type, l.lead_status, l.handle_at
+             FROM customers c
+             JOIN customer_leads l ON l.customer_id = c.id
+             WHERE l.user_id = $1",
+            user_id
+        )
+        .fetch_all(&db.pool)
+        .await?;
+
+        let items: Vec<LeadListItemDto> = rows
+            .into_iter()
+            .map(|row| LeadListItemDto {
+                id: row.id,
+                name: row.full_name,
+                phone: encrypt::decrypt_value(key, &row.phone_number_enc, &row.phone_number_nonce)
+                    .unwrap_or_default(),
+                email: encrypt::decrypt_value(key, &row.email_enc, &row.email_nonce)
+                    .unwrap_or_default(),
+                address: encrypt::decrypt_value(key, &row.address_enc, &row.address_nonce)
+                    .unwrap_or_default(),
+                lead_type: row.lead_type,
+                inquiry_type: row.inquiry_type,
+                lead_status: row.lead_status,
+                handle_at: row.handle_at,
+                created_by: row.created_by,
+            })
+            .collect();
+
+        Ok(items)
+    }
+
+    pub async fn change_handler(
+        db: &Database,
+        user_full_name: String,
+        customer_ids: Vec<i32>,
+    ) -> Result<()> {
+        let user = sqlx::query!(
+            "SELECT user_id as id FROM user_info WHERE full_name = $1",
+            user_full_name
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        sqlx::query!(
+            "UPDATE customer_leads
+             SET user_id = $2
+             WHERE id = ANY($1)",
+            &customer_ids,
+            user.id
+        )
+        .execute(&db.pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn delete(db: &Database, lead_ids: Vec<i32>) -> Result<()> {
+        for lead_id in lead_ids {
+            if !Lead::is_exists_by_id(db, lead_id).await? {
+                return Err(anyhow::anyhow!("Nem létező címanyag"));
+            }
+
+            sqlx::query!(
+                "DELETE FROM customer_leads
+                 WHERE id = $1",
+                lead_id
+            )
+            .execute(&db.pool)
+            .await?;
+        }
 
         Ok(())
     }

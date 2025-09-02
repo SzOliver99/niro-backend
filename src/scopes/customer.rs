@@ -2,12 +2,10 @@ use actix_web::{HttpResponse, Responder, ResponseError, Scope, web};
 use serde::Deserialize;
 
 use crate::{
-    database::Database,
     extractors::authentication_token::AuthenticationToken,
     models::{
         customer::Customer,
         user::{User, UserRole},
-        user_info::UserInfo,
     },
     utils::error::ApiError,
     web_data::WebData,
@@ -41,26 +39,12 @@ async fn create_customer(
         address: Some(data.address.clone()),
         email: Some(data.email.clone()),
         user_id: Some(data.user_id),
-        ..Default::default()
-    };
-    let user = User {
-        info: UserInfo {
-            full_name: Some(data.created_by.clone()),
-            ..Default::default()
-        },
+        created_by: Some(data.created_by.clone()),
         ..Default::default()
     };
 
-    match Customer::create(
-        &web_data.db,
-        &web_data.key,
-        &web_data.hmac_secret,
-        customer,
-        user,
-    )
-    .await
-    {
-        Ok(_) => HttpResponse::Created().json("Creation was successful!"),
+    match Customer::create(&web_data.db, &web_data.key, &web_data.hmac_secret, customer).await {
+        Ok(_) => HttpResponse::Created().json("Sikeresen létre lett hozva!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
@@ -116,7 +100,7 @@ async fn change_customer_handler(
     )
     .await
     {
-        Ok(_) => HttpResponse::Created().json("Registration successful!"),
+        Ok(_) => HttpResponse::Created().json("Ügyfélt kezelő üzletkötő sikeresen megváltoztatva!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
@@ -131,7 +115,7 @@ async fn delete_customer(
     }
 
     match Customer::delete(&web_data.db, data.0).await {
-        Ok(_) => HttpResponse::Created().json("Registration successful!"),
+        Ok(_) => HttpResponse::Created().json("Ügyfél sikeresen létrehozva!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }

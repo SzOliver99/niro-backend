@@ -5,12 +5,11 @@ use serde_with::skip_serializing_none;
 
 use crate::{
     database::Database,
-    models::user::User,
     utils::encrypt::{self},
 };
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize, Default, Clone)]
 pub struct Customer {
     pub id: Option<i32>,
     pub full_name: Option<String>,
@@ -59,7 +58,6 @@ impl Customer {
         key: &Key,
         hmac_secret: &Vec<u8>,
         new_customer: Customer,
-        user: User,
     ) -> Result<()> {
         if Self::is_exists(db, &hmac_secret, &new_customer).await? {
             return Err(anyhow::anyhow!("Az ügyfél már szerepel az adatbázisban."));
@@ -113,7 +111,7 @@ impl Customer {
             address_enc,
             address_nonce,
             new_customer.user_id,
-            user.info.full_name
+            new_customer.created_by
         )
         .fetch_one(&db.pool)
         .await?;

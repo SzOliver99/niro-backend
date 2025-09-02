@@ -2,7 +2,6 @@ use actix_web::{HttpResponse, Responder, ResponseError, Scope, web};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    database::Database,
     extractors::authentication_token::AuthenticationToken,
     models::{
         user::{User, UserRole},
