@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::Serialize;
 
 use super::user::UserRole;
@@ -20,6 +20,6 @@ pub struct LeadListItemDto {
     pub lead_type: String,
     pub inquiry_type: String,
     pub lead_status: String,
-    pub handle_at: NaiveDateTime,
+    pub handle_at: DateTime<Utc>,
     pub created_by: String,
 }

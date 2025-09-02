@@ -101,12 +101,12 @@ impl Lead {
 
         let _row = sqlx::query!(
             "INSERT INTO customer_leads(lead_type, inquiry_type, lead_status, customer_id, user_id, created_by)
-             VALUES($2, $3, $4, $1, $5, $6)
+             VALUES($1,$2, $3, $4, $5, $6)
              RETURNING id",
-            customer_id,
             lead.lead_type,
             lead.inquiry_type,
             lead.lead_status.map(|s| s.to_string()),
+            customer_id,
             customer.user_id,
             customer.created_by
         )
