@@ -54,7 +54,6 @@ async fn create_lead(
         lead_type: Some(data.lead_type.clone()),
         inquiry_type: Some(data.inquiry_type.clone()),
         lead_status: Some(data.lead_status.clone()),
-        handle_at: Some(chrono::Utc::now().naive_utc().with_nanosecond(0).unwrap()),
         ..Default::default()
     };
 

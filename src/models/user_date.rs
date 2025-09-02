@@ -1,6 +1,6 @@
 use anyhow::{Ok, Result};
 use chacha20poly1305::Key;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::Serialize;
 use serde_with::skip_serializing_none;
 
@@ -17,7 +17,7 @@ pub struct UserMeetDate {
     pub meet_type: Option<String>,
     pub is_completed: Option<bool>,
     pub created_by: Option<String>,
-    pub created_at: Option<NaiveDateTime>,
+    pub created_at: Option<DateTime<Utc>>,
     pub user_id: Option<i32>,
 }
 

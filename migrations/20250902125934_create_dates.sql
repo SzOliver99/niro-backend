@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS user_dates(
     is_completed BOOLEAN NOT NULL DEFAULT FALSE,
 
     created_by VARCHAR(254) NOT NULL,
-    created_at TIMESTAMP(0) NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ(0) NOT NULL DEFAULT NOW(),
 
     user_id INT REFERENCES users(id) ON DELETE SET NULL
 );

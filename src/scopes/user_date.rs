@@ -1,4 +1,5 @@
 use actix_web::{HttpResponse, Responder, ResponseError, Scope, web};
+use chrono::{NaiveDateTime, Utc};
 use serde::Deserialize;
 
 use crate::{
@@ -44,7 +45,6 @@ async fn create_date(
     };
 
     let user_date = UserMeetDate {
-        id: None,
         meet_date: Some(meet_date),
         full_name: Some(data.full_name.clone()),
         phone_number: Some(data.phone_number.clone()),
@@ -52,8 +52,8 @@ async fn create_date(
         meet_type: Some(data.meet_type.clone()),
         is_completed: Some(false),
         created_by: Some(data.created_by.clone()),
-        created_at: None,
         user_id: Some(data.user_id),
+        ..Default::default()
     };
     println!("User_date: {:?}", user_date);
 

@@ -1,6 +1,6 @@
 use anyhow::{Ok, Result};
 use chacha20poly1305::Key;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use sqlx::prelude::Type;
@@ -18,7 +18,7 @@ pub struct Lead {
     pub lead_type: Option<String>,
     pub inquiry_type: Option<String>,
     pub lead_status: Option<LeadStatus>,
-    pub handle_at: Option<NaiveDateTime>,
+    pub handle_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Type, Clone)]
@@ -100,14 +100,13 @@ impl Lead {
         };
 
         let _row = sqlx::query!(
-            "INSERT INTO customer_leads(lead_type, inquiry_type, lead_status, handle_at, customer_id, user_id, created_by)
-             VALUES($2, $3, $4, $5, $1, $6, $7)
+            "INSERT INTO customer_leads(lead_type, inquiry_type, lead_status, customer_id, user_id, created_by)
+             VALUES($2, $3, $4, $1, $5, $6)
              RETURNING id",
             customer_id,
             lead.lead_type,
             lead.inquiry_type,
             lead.lead_status.map(|s| s.to_string()),
-            lead.handle_at,
             customer.user_id,
             customer.created_by
         )

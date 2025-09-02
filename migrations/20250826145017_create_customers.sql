@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS customer_leads(
     lead_type TEXT NOT NULL,
     inquiry_type TEXT NOT NULL,
     lead_status VARCHAR(20) NOT NULL,
-    handle_at TIMESTAMP NOT NULL,
+    handle_at TIMESTAMPTZ(0) NOT NULL NOW(),
     customer_id INT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
 
     user_id INT REFERENCES users(id) ON DELETE SET NULL,
