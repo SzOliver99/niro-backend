@@ -1,12 +1,9 @@
-use std::{env, ops::Deref};
+use std::env;
 
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, http, middleware::Logger, web};
-use base64::{
-    Engine as _, alphabet,
-    engine::{self, general_purpose},
-};
-use chacha20poly1305::{ChaCha20Poly1305, Key, KeyInit, aead::Aead};
+use base64::{Engine as _, engine::general_purpose};
+use chacha20poly1305::Key;
 use env_logger::Env;
 
 use crate::{database::Database, scopes, web_data::WebData};

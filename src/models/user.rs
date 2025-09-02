@@ -24,7 +24,6 @@ pub struct User {
     pub username: Option<String>,
     pub info: UserInfo,
     pub password: Option<String>,
-    pub first_login: Option<bool>,
     pub user_role: Option<UserRole>,
     pub manager_id: Option<i32>,
 }
@@ -94,15 +93,6 @@ impl User {
 
         Ok(is_exists.is_some())
     }
-
-    async fn create_first_login_token(db: &Database, user_id: i32) -> Result<String> {
-        let mut redis_con = db.redis.get_connection().unwrap();
-
-        let token = Token::generate_token();
-        let _ = Redis::set_token_to_user(&mut redis_con, user_id as u32, &token, 120)?;
-
-        Ok(token)
-    }
 }
 
 impl User {
@@ -146,7 +136,7 @@ impl User {
 
     pub async fn sign_in_with_username(db: &Database, user: User) -> Result<SignInResult> {
         let user_data = sqlx::query!(
-            "SELECT id as \"id!\", username, password, first_login FROM users WHERE username = $1",
+            "SELECT id as \"id!\", username, password FROM users WHERE username = $1",
             user.username
         )
         .fetch_optional(&db.pool)
@@ -157,12 +147,6 @@ impl User {
         };
 
         if password_hashing::verify_password(&user.password.unwrap(), &hashed_user.password) {
-            if hashed_user.first_login {
-                let token = User::create_first_login_token(db, hashed_user.id).await?;
-
-                return Ok(SignInResult::FirstLoginToken(token));
-            }
-
             Ok(SignInResult::UserToken(
                 generate_jwt_token(hashed_user.id as usize, env::var("AUTH_SECRET").unwrap()).await,
             ))
@@ -420,36 +404,6 @@ impl User {
 
     //     Ok(result)
     // }
-
-    pub async fn complete_first_login(
-        db: &Database,
-        new_password: String,
-        token: String,
-    ) -> Result<String> {
-        let mut redis_con = db.redis.get_connection().unwrap();
-        let user_id = Redis::get_user_id_by_token(&mut redis_con, &token)?;
-
-        if !User::is_exists_by_id(db, user_id).await? {
-            return Err(anyhow::anyhow!("Invalid user_id"));
-        }
-        let hashed_password = password_hashing::hash_password(&new_password);
-        let _ = sqlx::query!(
-            "UPDATE users
-             SET password = $2, first_login = False
-             WHERE id = $1",
-            user_id,
-            hashed_password
-        )
-        .execute(&db.pool)
-        .await?;
-
-        let user_token =
-            generate_jwt_token(user_id as usize, env::var("AUTH_SECRET").unwrap()).await;
-
-        redis_con.del::<_, String>(token)?;
-
-        Ok(user_token)
-    }
 
     pub async fn get_sub_users(db: &Database, user_id: i32, min_role: String) -> Result<Vec<User>> {
         let user_role = Self::get_role(db, user_id).await?;

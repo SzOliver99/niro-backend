@@ -21,10 +21,6 @@ pub fn user_scope() -> Scope {
         .route("/sub-users", web::post().to(get_user_sub_users))
         .route("/manager", web::put().to(modify_user_manager))
         .route("/delete", web::delete().to(delete_user))
-        .route(
-            "/first-login/complete",
-            web::post().to(finish_user_first_login),
-        )
         .route("/info", web::get().to(get_user_informations_by_id))
         .route("/info", web::put().to(modify_user_info))
         .route("/managers/list", web::post().to(get_manager_names))
@@ -248,23 +244,6 @@ async fn get_user_sub_users(
 ) -> impl Responder {
     match User::get_sub_users(&web_data.db, auth_token.id as i32, data.0).await {
         Ok(list) => HttpResponse::Ok().json(list),
-        Err(e) => ApiError::from(e).error_response(),
-    }
-}
-
-#[derive(Deserialize, Clone, Debug)]
-struct FirstLoginJson {
-    new_password: String,
-    token: String,
-}
-async fn finish_user_first_login(
-    web_data: web::Data<WebData>,
-    data: web::Json<FirstLoginJson>,
-) -> impl Responder {
-    match User::complete_first_login(&web_data.db, data.new_password.clone(), data.token.clone())
-        .await
-    {
-        Ok(token) => HttpResponse::Ok().json(token),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
