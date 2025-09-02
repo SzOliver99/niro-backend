@@ -58,7 +58,7 @@ impl Customer {
         key: &Key,
         hmac_secret: &Vec<u8>,
         new_customer: Customer,
-    ) -> Result<()> {
+    ) -> Result<i32> {
         if Self::is_exists(db, &hmac_secret, &new_customer).await? {
             return Err(anyhow::anyhow!("Az ügyfél már szerepel az adatbázisban."));
         }
@@ -97,7 +97,7 @@ impl Customer {
             )
         };
 
-        let _row = sqlx::query!(
+        let row = sqlx::query!(
             "INSERT INTO customers(full_name, phone_number_enc, phone_number_nonce, phone_number_hash, email_enc, email_nonce, email_hash, address_enc, address_nonce, user_id, created_by)
              VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
              RETURNING id",
@@ -116,7 +116,7 @@ impl Customer {
         .fetch_one(&db.pool)
         .await?;
 
-        Ok(())
+        Ok(row.id)
     }
 
     pub async fn get_by_id(db: &Database, key: &Key, user_id: i32) -> Result<Self> {

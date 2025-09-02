@@ -92,17 +92,18 @@ impl Lead {
         .fetch_optional(&db.pool)
         .await?;
 
-        if row.is_none() {
-            Customer::create(db, key, hmac_secret, customer.clone())
-                .await
-                .unwrap();
-        }
+        // Determine customer_id: create customer if not exists, otherwise use existing id
+        let customer_id = if let Some(existing) = row {
+            existing.id
+        } else {
+            Customer::create(db, key, hmac_secret, customer.clone()).await?
+        };
 
         let _row = sqlx::query!(
             "INSERT INTO customer_leads(lead_type, inquiry_type, lead_status, handle_at, customer_id, user_id, created_by)
              VALUES($2, $3, $4, $5, $1, $6, $7)
              RETURNING id",
-            row.unwrap().id,
+            customer_id,
             lead.lead_type,
             lead.inquiry_type,
             lead.lead_status.map(|s| s.to_string()),

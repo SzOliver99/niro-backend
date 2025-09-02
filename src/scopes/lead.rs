@@ -57,7 +57,6 @@ async fn create_lead(
         handle_at: Some(chrono::Utc::now().naive_utc().with_nanosecond(0).unwrap()),
         ..Default::default()
     };
-    println!("Customer: {:#?} Lead: {:#?}", customer, lead);
 
     match Lead::create(
         &web_data.db,
