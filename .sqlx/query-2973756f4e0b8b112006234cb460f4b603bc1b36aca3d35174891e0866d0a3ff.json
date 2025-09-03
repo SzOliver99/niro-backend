@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id FROM customer_leads\n             WHERE id = $1",
+  "query": "SELECT id FROM customer_leads\n             WHERE uuid = $1",
   "describe": {
     "columns": [
       {
@@ -11,12 +11,12 @@
     ],
     "parameters": {
       "Left": [
-        "Int4"
+        "Uuid"
       ]
     },
     "nullable": [
       false
     ]
   },
-  "hash": "aaec20970465040be07e6ee23e7ef39ece730c2909a8d12c4f7bf8a1b4663a91"
+  "hash": "2973756f4e0b8b112006234cb460f4b603bc1b36aca3d35174891e0866d0a3ff"
 }
