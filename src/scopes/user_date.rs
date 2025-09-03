@@ -27,7 +27,7 @@ struct CreateDateJson {
     meet_location: String,
     meet_type: String,
     created_by: String,
-    user_id: i32,
+    user_uuid: Uuid,
 }
 
 async fn create_date(
@@ -52,7 +52,6 @@ async fn create_date(
         meet_type: Some(data.meet_type.clone()),
         is_completed: Some(false),
         created_by: Some(data.created_by.clone()),
-        user_id: Some(data.user_id),
         ..Default::default()
     };
     println!("User_date: {:?}", user_date);
@@ -61,6 +60,7 @@ async fn create_date(
         &web_data.db,
         &web_data.key,
         &web_data.hmac_secret,
+        data.user_uuid,
         user_date,
     )
     .await

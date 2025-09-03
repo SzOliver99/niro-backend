@@ -1,0 +1,74 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT u.uuid,\n                    u.email,\n                    u.username,\n                    u.user_role,\n                    m.uuid as manager_uuid,\n                    ui.id              AS ui_id,\n                    ui.full_name       AS ui_full_name,\n                    ui.phone_number    AS ui_phone_number,\n                    ui.hufa_code       AS ui_hufa_code,\n                    ui.agent_code      AS ui_agent_code\n              FROM users u\n              JOIN user_info ui ON ui.user_id = u.id\n              LEFT JOIN users m ON m.id = u.manager_id\n              ORDER BY CASE u.user_role\n                  WHEN 'Leader' THEN 1\n                  WHEN 'Manager' THEN 2\n                  WHEN 'Agent' THEN 3\n              END;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "user_role",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "manager_uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "ui_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "ui_full_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "ui_phone_number",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "ui_hufa_code",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "ui_agent_code",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d81efcf1c4818fdc88dc766e346704d6fb092dde3fa5405f90385483ae900e66"
+}

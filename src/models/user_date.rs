@@ -32,8 +32,11 @@ impl UserMeetDate {
         db: &Database,
         key: &Key,
         hmac_secret: &HmacSecret,
+        user_uuid: Uuid,
         new_meet_date: UserMeetDate,
     ) -> Result<i32> {
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
+
         let phone = new_meet_date.phone_number.as_deref().unwrap();
         let phone_hash = encrypt::hash_value(&hmac_secret, phone);
         let (phone_enc, phone_nonce) = encrypt::encrypt_value(&key, phone);
@@ -50,7 +53,7 @@ impl UserMeetDate {
             new_meet_date.meet_location,
             new_meet_date.meet_type,
             new_meet_date.created_by,
-            new_meet_date.user_id
+            user_id
         )
         .fetch_one(&db.pool)
         .await?;

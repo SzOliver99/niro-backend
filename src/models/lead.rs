@@ -64,11 +64,11 @@ impl Lead {
         Ok(is_exists.is_some())
     }
 
-    async fn is_exists_by_id(db: &Database, lead_id: i32) -> Result<bool> {
+    async fn is_exists_by_id(db: &Database, lead_uuid: Uuid) -> Result<bool> {
         let is_exists = sqlx::query!(
             "SELECT id FROM customer_leads
-             WHERE id = $1",
-            lead_id
+             WHERE uuid = $1",
+            lead_uuid
         )
         .fetch_optional(&db.pool)
         .await?;
@@ -100,6 +100,9 @@ impl Lead {
         } else {
             Customer::create(db, key, hmac_secret, customer.clone()).await?
         };
+        let user_id = User::get_id_by_uuid(db, customer.uuid)
+            .await?
+            .unwrap();
 
         let _row = sqlx::query!(
             "INSERT INTO customer_leads(lead_type, inquiry_type, lead_status, customer_id, user_id, created_by)
@@ -109,7 +112,7 @@ impl Lead {
             lead.inquiry_type,
             lead.lead_status.map(|s| s.to_string()),
             customer_id,
-            customer.user_id,
+            user_id,
             customer.created_by
         )
         .fetch_one(&db.pool)
@@ -124,6 +127,7 @@ impl Lead {
         user_uuid: Uuid,
     ) -> Result<Vec<LeadListItemDto>> {
         let user_id = User::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
+        println!("{user_id:?}");
         let rows = sqlx::query!(
             "SELECT c.full_name, c.phone_number_enc, c.phone_number_nonce, c.email_enc, c.email_nonce, c.address_enc, c.address_nonce, c.created_by, l.uuid, l.lead_type, l.inquiry_type, l.lead_status, l.handle_at
              FROM customers c

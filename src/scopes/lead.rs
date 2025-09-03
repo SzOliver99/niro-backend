@@ -34,7 +34,7 @@ struct CreateLeadJson {
     lead_type: String,
     inquiry_type: String,
     lead_status: LeadStatus,
-    user_id: i32,
+    user_uuid: Uuid,
     created_by: String,
 }
 async fn create_lead(
@@ -46,8 +46,8 @@ async fn create_lead(
         phone_number: Some(data.customer.phone_number.clone()),
         email: Some(data.customer.email.clone()),
         address: Some(data.customer.address.clone()),
-        user_id: Some(data.user_id),
         created_by: Some(data.created_by.clone()),
+        uuid: Some(data.user_uuid),
         ..Default::default()
     };
     let lead = Lead {
@@ -56,6 +56,7 @@ async fn create_lead(
         lead_status: Some(data.lead_status.clone()),
         ..Default::default()
     };
+    println!("{customer:?}");
 
     match Lead::create(
         &web_data.db,
