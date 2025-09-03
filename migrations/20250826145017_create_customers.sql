@@ -1,6 +1,7 @@
 -- Add migration script here
 CREATE TABLE IF NOT EXISTS customers (
     id SERIAL PRIMARY KEY,
+    uuid UUID UNIQUE DEFAULT uuid_generate_v4(),
     full_name VARCHAR(254) NOT NULL,
 
     phone_number_enc BYTEA NOT NULL,
@@ -18,12 +19,17 @@ CREATE TABLE IF NOT EXISTS customers (
     created_by VARCHAR(254) NOT NULL
 );
 
+-- Indexes for customers
+CREATE INDEX IF NOT EXISTS idx_customers_user_id ON customers(user_id);
+CREATE INDEX IF NOT EXISTS idx_customers_created_by ON customers(created_by);
+
 CREATE TABLE IF NOT EXISTS customer_leads(
     id SERIAL PRIMARY KEY,
+    uuid UUID UNIQUE DEFAULT uuid_generate_v4(),
     lead_type TEXT NOT NULL,
     inquiry_type TEXT NOT NULL,
     lead_status VARCHAR(20) NOT NULL,
-    handle_at TIMESTAMPTZ(0) NOT NULL NOW(),
+    handle_at TIMESTAMPTZ(0) NOT NULL DEFAULT NOW(),
     customer_id INT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
 
     user_id INT REFERENCES users(id) ON DELETE SET NULL,
@@ -31,10 +37,10 @@ CREATE TABLE IF NOT EXISTS customer_leads(
     CONSTRAINT leads_lead_status_check CHECK (lead_status IN ('Opened', 'InProgress', 'Closed'))
 );
 
--- Indexes for performance and search
-CREATE INDEX IF NOT EXISTS idx_customers_user_id ON customers (user_id);
-CREATE INDEX IF NOT EXISTS idx_customers_email_hash ON customers (email_hash);
-CREATE INDEX IF NOT EXISTS idx_customers_phone_number_hash ON customers (phone_number_hash);
+-- Indexes for customer_leads
+CREATE INDEX IF NOT EXISTS idx_customer_leads_customer_id ON customer_leads(customer_id);
+CREATE INDEX IF NOT EXISTS idx_customer_leads_user_id ON customer_leads(user_id);
+CREATE INDEX IF NOT EXISTS idx_customer_leads_lead_status ON customer_leads(lead_status);
+CREATE INDEX IF NOT EXISTS idx_customer_leads_handle_at ON customer_leads(handle_at);
 
-CREATE INDEX IF NOT EXISTS idx_customer_leads_customer_id ON customer_leads (customer_id);
-CREATE INDEX IF NOT EXISTS idx_customer_leads_user_id ON customer_leads (user_id);
+CREATE INDEX IF NOT EXISTS idx_customer_leads_status_user ON customer_leads(lead_status, user_id);

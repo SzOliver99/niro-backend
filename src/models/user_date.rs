@@ -3,13 +3,19 @@ use chacha20poly1305::Key;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::Serialize;
 use serde_with::skip_serializing_none;
+use uuid::Uuid;
 
-use crate::{database::Database, utils::encrypt};
+use crate::{
+    database::Database,
+    models::user::User,
+    utils::encrypt::{self, HmacSecret},
+};
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Default, Clone)]
 pub struct UserMeetDate {
     pub id: Option<i32>,
+    pub uuid: Option<Uuid>,
     pub meet_date: Option<NaiveDateTime>,
     pub full_name: Option<String>,
     pub phone_number: Option<String>,
@@ -25,17 +31,12 @@ impl UserMeetDate {
     pub async fn create(
         db: &Database,
         key: &Key,
-        hmac_secret: &Vec<u8>,
+        hmac_secret: &HmacSecret,
         new_meet_date: UserMeetDate,
     ) -> Result<i32> {
-        let (phone_hash, phone_enc, phone_nonce) = {
-            let phone = new_meet_date.phone_number.as_deref().unwrap();
-            let phone_hash = encrypt::hash_value(&hmac_secret, phone);
-
-            let (phone_enc, phone_nonce) = encrypt::encrypt_value(&key, phone);
-
-            (phone_hash, phone_enc, phone_nonce)
-        };
+        let phone = new_meet_date.phone_number.as_deref().unwrap();
+        let phone_hash = encrypt::hash_value(&hmac_secret, phone);
+        let (phone_enc, phone_nonce) = encrypt::encrypt_value(&key, phone);
 
         let row = sqlx::query!(
             "INSERT INTO user_dates(meet_date, full_name, phone_number_enc, phone_number_nonce, phone_number_hash, meet_location, meet_type, created_by, user_id)
@@ -57,9 +58,10 @@ impl UserMeetDate {
         Ok(row.id)
     }
 
-    pub async fn get_all(db: &Database, key: &Key, user_id: i32) -> Result<Vec<UserMeetDate>> {
+    pub async fn get_all(db: &Database, key: &Key, user_uuid: Uuid) -> Result<Vec<UserMeetDate>> {
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
         let rows = sqlx::query!(
-            "SELECT id, meet_date, full_name, phone_number_enc, phone_number_nonce, phone_number_hash, meet_location, meet_type,is_completed, created_by, created_at, user_id
+            "SELECT uuid, meet_date, full_name, phone_number_enc, phone_number_nonce, phone_number_hash, meet_location, meet_type,is_completed, created_by, created_at
              FROM user_dates
              WHERE user_id = $1
              ORDER BY meet_date DESC
@@ -72,7 +74,7 @@ impl UserMeetDate {
         Ok(rows
             .into_iter()
             .map(|row| UserMeetDate {
-                id: Some(row.id),
+                uuid: row.uuid,
                 meet_date: Some(row.meet_date),
                 full_name: Some(row.full_name),
                 phone_number: encrypt::decrypt_value(
@@ -85,7 +87,7 @@ impl UserMeetDate {
                 is_completed: Some(row.is_completed),
                 created_by: Some(row.created_by),
                 created_at: Some(row.created_at),
-                user_id: row.user_id,
+                ..Default::default()
             })
             .collect())
     }
@@ -93,7 +95,7 @@ impl UserMeetDate {
     pub async fn change_handler(
         db: &Database,
         user_full_name: String,
-        date_ids: Vec<i32>,
+        date_uuids: Vec<Uuid>,
     ) -> Result<()> {
         let user = sqlx::query!(
             "SELECT user_id as id FROM user_info WHERE full_name = $1",
@@ -105,8 +107,8 @@ impl UserMeetDate {
         sqlx::query!(
             "UPDATE user_dates
              SET user_id = $2
-             WHERE id = ANY($1)",
-            &date_ids,
+             WHERE uuid = ANY($1)",
+            &date_uuids,
             user.id
         )
         .execute(&db.pool)
@@ -114,12 +116,16 @@ impl UserMeetDate {
         Ok(())
     }
 
-    pub async fn change_date_state(db: &Database, date_id: i32, is_completed: bool) -> Result<()> {
+    pub async fn change_date_state(
+        db: &Database,
+        date_uuid: Uuid,
+        is_completed: bool,
+    ) -> Result<()> {
         sqlx::query!(
             "UPDATE user_dates
              SET is_completed = $2
-             WHERE id = $1",
-            &date_id,
+             WHERE uuid = $1",
+            &date_uuid,
             is_completed
         )
         .execute(&db.pool)
@@ -127,8 +133,8 @@ impl UserMeetDate {
         Ok(())
     }
 
-    pub async fn delete(db: &Database, date_ids: Vec<i32>) -> Result<()> {
-        sqlx::query!("DELETE FROM user_dates WHERE id = ANY($1)", &date_ids)
+    pub async fn delete(db: &Database, date_uuids: Vec<Uuid>) -> Result<()> {
+        sqlx::query!("DELETE FROM user_dates WHERE uuid = ANY($1)", &date_uuids)
             .execute(&db.pool)
             .await?;
         Ok(())

@@ -1,5 +1,6 @@
 use actix_web::{HttpResponse, Responder, ResponseError, Scope, web};
 use serde::Deserialize;
+use uuid::Uuid;
 
 use crate::{
     extractors::authentication_token::AuthenticationToken,
@@ -15,7 +16,7 @@ use crate::{
 pub fn lead_scope() -> Scope {
     web::scope("/lead")
         .route("/create", web::post().to(create_lead))
-        .route("/get-all", web::post().to(get_leads_by_user_id))
+        .route("/get-all", web::post().to(get_leads_by_user_uuid))
         .route("/change/user", web::post().to(change_lead_handler))
         .route("/delete", web::delete().to(delete_lead))
 }
@@ -70,19 +71,11 @@ async fn create_lead(
     }
 }
 
-async fn get_leads_by_user_id(
+async fn get_leads_by_user_uuid(
     web_data: web::Data<WebData>,
-    auth_token: AuthenticationToken,
-    data: web::Json<i32>,
+    _: AuthenticationToken,
+    data: web::Json<Uuid>,
 ) -> impl Responder {
-    if data.0 != auth_token.id as i32 {
-        if let Err(e) =
-            User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
-        {
-            return ApiError::from(e).error_response();
-        }
-    }
-
     match Lead::get_all(&web_data.db, &web_data.key, data.0).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
@@ -92,7 +85,7 @@ async fn get_leads_by_user_id(
 #[derive(Deserialize)]
 struct ChangeLeadsHandlerJson {
     user_full_name: String,
-    lead_ids: Vec<i32>,
+    lead_uuids: Vec<Uuid>,
 }
 async fn change_lead_handler(
     web_data: web::Data<WebData>,
@@ -106,7 +99,7 @@ async fn change_lead_handler(
     match Lead::change_handler(
         &web_data.db,
         data.user_full_name.clone(),
-        data.lead_ids.clone(),
+        data.lead_uuids.clone(),
     )
     .await
     {
@@ -118,7 +111,7 @@ async fn change_lead_handler(
 async fn delete_lead(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
-    data: web::Json<Vec<i32>>,
+    data: web::Json<Vec<Uuid>>,
 ) -> impl Responder {
     if let Err(e) = User::require_role(&web_data.db, UserRole::Agent, auth_token.id as i32).await {
         return ApiError::from(e).error_response();

@@ -4,17 +4,19 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use sqlx::prelude::Type;
+use uuid::Uuid;
 
 use crate::{
     database::Database,
-    models::{customer::Customer, dto::LeadListItemDto},
-    utils::encrypt,
+    models::{customer::Customer, dto::LeadListItemDto, user::User},
+    utils::encrypt::{self, HmacSecret},
 };
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Default)]
 pub struct Lead {
     pub id: Option<i32>,
+    pub uuid: Option<Uuid>,
     pub lead_type: Option<String>,
     pub inquiry_type: Option<String>,
     pub lead_status: Option<LeadStatus>,
@@ -79,7 +81,7 @@ impl Lead {
     pub async fn create(
         db: &Database,
         key: &Key,
-        hmac_secret: &Vec<u8>,
+        hmac_secret: &HmacSecret,
         customer: Customer,
         lead: Lead,
     ) -> Result<()> {
@@ -116,9 +118,14 @@ impl Lead {
         Ok(())
     }
 
-    pub async fn get_all(db: &Database, key: &Key, user_id: i32) -> Result<Vec<LeadListItemDto>> {
+    pub async fn get_all(
+        db: &Database,
+        key: &Key,
+        user_uuid: Uuid,
+    ) -> Result<Vec<LeadListItemDto>> {
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
         let rows = sqlx::query!(
-            "SELECT c.full_name, c.phone_number_enc, c.phone_number_nonce, c.email_enc, c.email_nonce, c.address_enc, c.address_nonce, c.created_by, l.id, l.lead_type, l.inquiry_type, l.lead_status, l.handle_at
+            "SELECT c.full_name, c.phone_number_enc, c.phone_number_nonce, c.email_enc, c.email_nonce, c.address_enc, c.address_nonce, c.created_by, l.uuid, l.lead_type, l.inquiry_type, l.lead_status, l.handle_at
              FROM customers c
              JOIN customer_leads l ON l.customer_id = c.id
              WHERE l.user_id = $1",
@@ -130,7 +137,7 @@ impl Lead {
         let items: Vec<LeadListItemDto> = rows
             .into_iter()
             .map(|row| LeadListItemDto {
-                id: row.id,
+                uuid: row.uuid,
                 name: row.full_name,
                 phone: encrypt::decrypt_value(key, &row.phone_number_enc, &row.phone_number_nonce)
                     .unwrap_or_default(),
@@ -152,7 +159,7 @@ impl Lead {
     pub async fn change_handler(
         db: &Database,
         user_full_name: String,
-        customer_ids: Vec<i32>,
+        customer_uuids: Vec<Uuid>,
     ) -> Result<()> {
         let user = sqlx::query!(
             "SELECT user_id as id FROM user_info WHERE full_name = $1",
@@ -164,8 +171,8 @@ impl Lead {
         sqlx::query!(
             "UPDATE customer_leads
              SET user_id = $2
-             WHERE id = ANY($1)",
-            &customer_ids,
+             WHERE uuid = ANY($1)",
+            &customer_uuids,
             user.id
         )
         .execute(&db.pool)
@@ -173,20 +180,14 @@ impl Lead {
         Ok(())
     }
 
-    pub async fn delete(db: &Database, lead_ids: Vec<i32>) -> Result<()> {
-        for lead_id in lead_ids {
-            if !Lead::is_exists_by_id(db, lead_id).await? {
-                return Err(anyhow::anyhow!("Nem létező címanyag"));
-            }
-
-            sqlx::query!(
-                "DELETE FROM customer_leads
-                 WHERE id = $1",
-                lead_id
-            )
-            .execute(&db.pool)
-            .await?;
-        }
+    pub async fn delete(db: &Database, lead_uuids: Vec<Uuid>) -> Result<()> {
+        sqlx::query!(
+            "DELETE FROM customer_leads
+             WHERE uuid = ANY($1)",
+            &lead_uuids
+        )
+        .execute(&db.pool)
+        .await?;
 
         Ok(())
     }

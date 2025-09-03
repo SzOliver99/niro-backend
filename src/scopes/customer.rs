@@ -1,5 +1,6 @@
 use actix_web::{HttpResponse, Responder, ResponseError, Scope, web};
 use serde::Deserialize;
+use uuid::Uuid;
 
 use crate::{
     extractors::authentication_token::AuthenticationToken,
@@ -14,31 +15,32 @@ use crate::{
 pub fn customer_scope() -> Scope {
     web::scope("/customer")
         .route("/create", web::post().to(create_customer))
-        .route("/get-all", web::post().to(get_customers_by_user_id))
-        .route("/get", web::post().to(get_customers_by_id))
+        .route("/modify", web::put().to(modify_customer))
+        .route("/get-all", web::post().to(get_customers_by_uuid))
+        .route("/get", web::post().to(get_customer_by_uuid))
         .route("/change/user", web::post().to(change_customer_handler))
         .route("/delete", web::delete().to(delete_customer))
 }
 
 #[derive(Deserialize, Clone)]
-struct CustomerJson {
+struct CreateCustomerJson {
+    user_uuid: Uuid,
     full_name: String,
     phone_number: String,
     address: String,
     email: String,
-    user_id: i32,
     created_by: String,
 }
 async fn create_customer(
     web_data: web::Data<WebData>,
-    data: web::Json<CustomerJson>,
+    data: web::Json<CreateCustomerJson>,
 ) -> impl Responder {
     let customer = Customer {
+        uuid: Some(data.user_uuid),
         full_name: Some(data.full_name.clone()),
         phone_number: Some(data.phone_number.clone()),
         address: Some(data.address.clone()),
         email: Some(data.email.clone()),
-        user_id: Some(data.user_id),
         created_by: Some(data.created_by.clone()),
         ..Default::default()
     };
@@ -49,31 +51,57 @@ async fn create_customer(
     }
 }
 
-async fn get_customers_by_user_id(
+#[derive(Deserialize, Clone)]
+struct ModifyCustomerJson {
+    customer_uuid: Uuid,
+    full_name: String,
+    phone_number: String,
+    address: String,
+    email: String,
+}
+async fn modify_customer(
     web_data: web::Data<WebData>,
-    auth_token: AuthenticationToken,
-    data: web::Json<i32>,
+    data: web::Json<ModifyCustomerJson>,
 ) -> impl Responder {
-    if data.0 != auth_token.id as i32 {
-        if let Err(e) =
-            User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
-        {
-            return ApiError::from(e).error_response();
-        }
-    }
+    let customer = Customer {
+        full_name: Some(data.full_name.clone()),
+        phone_number: Some(data.phone_number.clone()),
+        address: Some(data.address.clone()),
+        email: Some(data.email.clone()),
+        ..Default::default()
+    };
 
+    match Customer::modify(
+        &web_data.db,
+        &web_data.key,
+        &web_data.hmac_secret,
+        data.customer_uuid,
+        customer,
+    )
+    .await
+    {
+        Ok(_) => HttpResponse::Created().json("Sikeresen módosítottad az ügyfelet!"),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_customers_by_uuid(
+    web_data: web::Data<WebData>,
+    _: AuthenticationToken,
+    data: web::Json<Uuid>,
+) -> impl Responder {
     match Customer::get_all(&web_data.db, &web_data.key, data.0).await {
         Ok(customers) => HttpResponse::Created().json(customers),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
 
-async fn get_customers_by_id(
+async fn get_customer_by_uuid(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
-    data: web::Json<i32>,
+    data: web::Json<Uuid>,
 ) -> impl Responder {
-    match Customer::get_by_id(&web_data.db, &web_data.key, data.0).await {
+    match Customer::get_by_uuid(&web_data.db, &web_data.key, data.0).await {
         Ok(customers) => HttpResponse::Created().json(customers),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -82,7 +110,7 @@ async fn get_customers_by_id(
 #[derive(Deserialize)]
 struct ChangeCustomersHandlerJson {
     user_full_name: String,
-    customer_ids: Vec<i32>,
+    customer_uuids: Vec<Uuid>,
 }
 async fn change_customer_handler(
     web_data: web::Data<WebData>,
@@ -96,7 +124,7 @@ async fn change_customer_handler(
     match Customer::change_handler(
         &web_data.db,
         data.user_full_name.clone(),
-        data.customer_ids.clone(),
+        data.customer_uuids.clone(),
     )
     .await
     {
@@ -108,7 +136,7 @@ async fn change_customer_handler(
 async fn delete_customer(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
-    data: web::Json<Vec<i32>>,
+    data: web::Json<Vec<Uuid>>,
 ) -> impl Responder {
     if let Err(e) = User::require_role(&web_data.db, UserRole::Agent, auth_token.id as i32).await {
         return ApiError::from(e).error_response();

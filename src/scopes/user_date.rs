@@ -1,5 +1,6 @@
 use actix_web::{HttpResponse, Responder, ResponseError, Scope, web};
 use serde::Deserialize;
+use uuid::Uuid;
 
 use crate::{
     extractors::authentication_token::AuthenticationToken,
@@ -71,17 +72,9 @@ async fn create_date(
 
 async fn get_all_dates(
     web_data: web::Data<WebData>,
-    auth_token: AuthenticationToken,
-    data: web::Json<i32>,
+    _: AuthenticationToken,
+    data: web::Json<Uuid>,
 ) -> impl Responder {
-    if data.0 != auth_token.id as i32 {
-        if let Err(e) =
-            User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
-        {
-            return ApiError::from(e).error_response();
-        }
-    }
-
     match UserMeetDate::get_all(&web_data.db, &web_data.key, data.0).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
@@ -91,7 +84,7 @@ async fn get_all_dates(
 #[derive(Deserialize)]
 struct ChangeDatesHandlerJson {
     user_full_name: String,
-    date_ids: Vec<i32>,
+    date_uuids: Vec<Uuid>,
 }
 
 async fn change_dates_handler(
@@ -106,7 +99,7 @@ async fn change_dates_handler(
     match UserMeetDate::change_handler(
         &web_data.db,
         data.user_full_name.clone(),
-        data.date_ids.clone(),
+        data.date_uuids.clone(),
     )
     .await
     {
@@ -117,7 +110,7 @@ async fn change_dates_handler(
 
 #[derive(Deserialize)]
 struct ChangeUserDateStateJson {
-    date_id: i32,
+    date_uuid: Uuid,
     value: bool,
 }
 async fn change_date_state(
@@ -125,7 +118,7 @@ async fn change_date_state(
     _: AuthenticationToken,
     data: web::Json<ChangeUserDateStateJson>,
 ) -> impl Responder {
-    match UserMeetDate::change_date_state(&web_data.db, data.date_id, data.value).await {
+    match UserMeetDate::change_date_state(&web_data.db, data.date_uuid, data.value).await {
         Ok(_) => HttpResponse::Ok().json("Időpont státusza megváltoztatva!"),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -134,7 +127,7 @@ async fn change_date_state(
 async fn delete_dates(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
-    data: web::Json<Vec<i32>>,
+    data: web::Json<Vec<Uuid>>,
 ) -> impl Responder {
     if let Err(e) = User::require_role(&web_data.db, UserRole::Agent, auth_token.id as i32).await {
         return ApiError::from(e).error_response();

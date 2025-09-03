@@ -6,6 +6,7 @@ use hmac::{Hmac, Mac};
 use sha2::Sha256;
 
 type HmacSha256 = Hmac<Sha256>;
+pub type HmacSecret = Vec<u8>;
 
 pub fn hash_value(secret: &[u8], value: &str) -> Vec<u8> {
     let mut mac = <HmacSha256 as Mac>::new_from_slice(secret).unwrap();

@@ -1,31 +1,28 @@
 use std::env;
 
 use anyhow::{Ok, Result};
-use redis::Commands;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use sqlx::{FromRow, prelude::Type};
+use uuid::Uuid;
 
 use crate::{
     database::Database,
     models::{dto::ManagerNameDto, user_info::UserInfo},
-    utils::{
-        jwt::generate_jwt_token,
-        password_hashing,
-        redis::{Redis, Token},
-    },
+    utils::{jwt::generate_jwt_token, password_hashing},
 };
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize, FromRow, Default)]
 pub struct User {
     pub id: Option<i32>,
+    pub uuid: Option<Uuid>,
     pub email: Option<String>,
     pub username: Option<String>,
     pub info: UserInfo,
     pub password: Option<String>,
     pub user_role: Option<UserRole>,
-    pub manager_id: Option<i32>,
+    pub manager_uuid: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Type, PartialEq, Eq, PartialOrd, Ord)]
@@ -48,10 +45,25 @@ impl From<String> for UserRole {
 #[derive(Serialize)]
 pub enum SignInResult {
     UserToken(String),
-    FirstLoginToken(String),
 }
 
 impl User {
+    pub async fn get_id_by_uuid(db: &Database, user_uuid: Option<Uuid>) -> Result<Option<i32>> {
+        let user = sqlx::query_scalar!("SELECT id FROM users WHERE uuid = $1", user_uuid)
+            .fetch_optional(&db.pool)
+            .await?;
+
+        Ok(user)
+    }
+
+    pub async fn get_uuid_by_id(db: &Database, user_id: i32) -> Result<Option<Uuid>> {
+        let user = sqlx::query!("SELECT uuid FROM users WHERE id = $1", user_id)
+            .fetch_one(&db.pool)
+            .await?;
+
+        Ok(user.uuid)
+    }
+
     pub async fn get_role(db: &Database, user_id: i32) -> Result<UserRole> {
         let user = sqlx::query!("SELECT user_role FROM users WHERE id = $1", user_id)
             .fetch_one(&db.pool)
@@ -111,8 +123,8 @@ impl User {
             new_user.email,
             new_user.username,
             hashed_password,
-            if new_user.manager_id.is_some() { "Agent" } else { "Manager" },
-            new_user.manager_id
+            if new_user.manager_uuid.is_some() { "Agent" } else { "Manager" },
+            Self::get_id_by_uuid(db, new_user.manager_uuid).await?
         )
         .fetch_one(&mut *tx)
         .await?;
@@ -161,11 +173,11 @@ impl User {
         }
 
         let rows = sqlx::query!(
-            "SELECT u.id               AS user_id,
-                    u.email            AS user_email,
-                    u.username         AS user_username,
-                    u.user_role        AS user_user_role,
-                    u.manager_id       AS user_manager_id,
+            "SELECT u.uuid,
+                    u.email,
+                    u.username,
+                    u.user_role,
+                    m.uuid as manager_uuid,
                     ui.id              AS ui_id,
                     ui.full_name       AS ui_full_name,
                     ui.phone_number    AS ui_phone_number,
@@ -173,6 +185,7 @@ impl User {
                     ui.agent_code      AS ui_agent_code
               FROM users u
               JOIN user_info ui ON ui.user_id = u.id
+              LEFT JOIN users m ON m.id = u.manager_id
               ORDER BY CASE u.user_role
                   WHEN 'Leader' THEN 1
                   WHEN 'Manager' THEN 2
@@ -185,10 +198,10 @@ impl User {
         let users = rows
             .into_iter()
             .map(|row| User {
-                id: Some(row.user_id),
-                email: Some(row.user_email),
-                username: Some(row.user_username),
-                user_role: Some(UserRole::from(row.user_user_role)),
+                uuid: row.uuid,
+                email: Some(row.email),
+                username: Some(row.username),
+                user_role: Some(UserRole::from(row.user_role)),
                 info: UserInfo {
                     full_name: Some(row.ui_full_name),
                     phone_number: Some(row.ui_phone_number),
@@ -196,24 +209,25 @@ impl User {
                     agent_code: Some(row.ui_agent_code),
                     ..Default::default()
                 },
-                manager_id: row.user_manager_id,
+                manager_uuid: row.manager_uuid,
                 ..Default::default()
             })
             .collect();
         Ok(users)
     }
 
-    pub async fn get_users_by_id(db: &Database, user_id: i32) -> Result<Vec<User>> {
+    pub async fn get_users_by_id(db: &Database, user_uuid: Uuid) -> Result<Vec<User>> {
+        let user_id = Self::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
         if !User::is_exists_by_id(db, user_id).await? {
             return Err(anyhow::anyhow!("Felhasználó nem létezik"));
         }
 
         let rows = sqlx::query!(
-            "SELECT u.id               AS user_id,
+            "SELECT u.uuid             AS user_uuid,
                     u.email            AS user_email,
                     u.username         AS user_username,
                     u.user_role        AS user_user_role,
-                    u.manager_id       AS user_manager_id,
+                    m.uuid             AS manager_uuid,
                     ui.id              AS ui_id,
                     ui.full_name       AS ui_full_name,
                     ui.phone_number    AS ui_phone_number,
@@ -221,6 +235,7 @@ impl User {
                     ui.agent_code      AS ui_agent_code
               FROM users u
               JOIN user_info ui ON ui.user_id = u.id
+              JOIN users m ON m.id = u.manager_id
               WHERE u.manager_id = $1
               ORDER BY CASE u.user_role
                   WHEN 'Leader' THEN 1
@@ -235,7 +250,7 @@ impl User {
         let users = rows
             .into_iter()
             .map(|row| User {
-                id: Some(row.user_id),
+                uuid: row.user_uuid,
                 email: Some(row.user_email),
                 username: Some(row.user_username),
                 user_role: Some(UserRole::from(row.user_user_role)),
@@ -246,7 +261,7 @@ impl User {
                     agent_code: Some(row.ui_agent_code),
                     ..Default::default()
                 },
-                manager_id: row.user_manager_id,
+                manager_uuid: row.manager_uuid,
                 ..Default::default()
             })
             .collect();
@@ -287,8 +302,9 @@ impl User {
         })
     }
 
-    pub async fn modify_info(db: &Database, user: User) -> Result<()> {
-        if !User::is_exists_by_id(db, user.id.unwrap()).await? {
+    pub async fn modify_info(db: &Database, user_uuid: Uuid, user: User) -> Result<()> {
+        let user_id = Self::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
+        if !User::is_exists_by_id(db, user_id).await? {
             return Err(anyhow::anyhow!("Invalid user_id"));
         }
 
@@ -297,7 +313,7 @@ impl User {
             "UPDATE users
              SET email = $2
              WHERE id = $1",
-            user.id,
+            user_id,
             user.email
         )
         .execute(&mut *tx)
@@ -307,7 +323,7 @@ impl User {
             "UPDATE user_info
              SET full_name = $2, phone_number = $3, hufa_code = $4, agent_code = $5
              WHERE user_id = $1",
-            user.id,
+            user_id,
             user.info.full_name,
             user.info.phone_number,
             user.info.hufa_code,
@@ -320,17 +336,20 @@ impl User {
         Ok(())
     }
 
-    pub async fn modify_manager(db: &Database, user: User) -> Result<()> {
-        if !User::is_exists_by_id(db, user.id.unwrap()).await? {
+    pub async fn modify_manager(db: &Database, user_uuid: Uuid, user: User) -> Result<()> {
+        let user_id = Self::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
+        if !User::is_exists_by_id(db, user_id).await? {
             return Err(anyhow::anyhow!("Invalid user_id"));
         }
 
-        if let Some(manager_id) = user.manager_id {
+        let manager_id = Self::get_id_by_uuid(db, user.manager_uuid).await?;
+        println!("{user_id} {manager_id:?}");
+        if let Some(manager_id) = manager_id {
             sqlx::query!(
                 "UPDATE users
                  SET manager_id = $2, user_role = DEFAULT
                  WHERE id = $1",
-                user.id,
+                user_id,
                 manager_id
             )
             .execute(&db.pool)
@@ -340,7 +359,7 @@ impl User {
                 "UPDATE users
                  SET manager_id = NULL, user_role = 'Manager'
                  WHERE id = $1",
-                user.id
+                user_id
             )
             .execute(&db.pool)
             .await?;
@@ -349,15 +368,16 @@ impl User {
         Ok(())
     }
 
-    pub async fn delete(db: &Database, user: User) -> Result<()> {
-        if !User::is_exists_by_id(db, user.id.unwrap()).await? {
+    pub async fn delete(db: &Database, user_uuid: Uuid) -> Result<()> {
+        let user_id = Self::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
+        if !User::is_exists_by_id(db, user_id).await? {
             return Err(anyhow::anyhow!("Invalid user_id"));
         }
 
         sqlx::query!(
             "DELETE FROM users
              WHERE id = $1",
-            user.id
+            user_id
         )
         .execute(&db.pool)
         .await?;
@@ -411,7 +431,7 @@ impl User {
         let users = match user_role {
             UserRole::Leader => {
                 let rows = sqlx::query!(
-                    "SELECT u.id as user_id, ui.full_name as ui_full_name, u.user_role as user_role
+                    "SELECT u.uuid, ui.full_name, u.user_role
                      FROM users u
                      JOIN user_info ui ON ui.user_id = u.id
                      WHERE (
@@ -434,9 +454,9 @@ impl User {
 
                 rows.into_iter()
                     .map(|user| User {
-                        id: Some(user.user_id),
+                        uuid: user.uuid,
                         info: UserInfo {
-                            full_name: Some(user.ui_full_name),
+                            full_name: Some(user.full_name),
                             ..Default::default()
                         },
                         user_role: Some(UserRole::from(user.user_role)),
@@ -446,7 +466,7 @@ impl User {
             }
             UserRole::Manager => {
                 let rows = sqlx::query!(
-                    "SELECT u.id as user_id, ui.full_name as ui_full_name, u.user_role as user_role
+                    "SELECT u.uuid, ui.full_name, u.user_role
                      FROM users u
                      JOIN user_info ui ON ui.user_id = u.id
                      WHERE u.id = $1 OR u.manager_id = $1 AND (
@@ -462,9 +482,9 @@ impl User {
 
                 rows.into_iter()
                     .map(|user| User {
-                        id: Some(user.user_id),
+                        uuid: user.uuid,
                         info: UserInfo {
-                            full_name: Some(user.ui_full_name),
+                            full_name: Some(user.full_name),
                             ..Default::default()
                         },
                         user_role: Some(UserRole::from(user.user_role)),
@@ -474,7 +494,7 @@ impl User {
             }
             _ => {
                 let rows = sqlx::query!(
-                    "SELECT u.id as user_id, ui.full_name as ui_full_name, u.user_role as user_role
+                    "SELECT u.uuid, ui.full_name, u.user_role
                      FROM users u
                      JOIN user_info ui ON ui.user_id = u.id
                      WHERE u.id = $1",
@@ -485,9 +505,9 @@ impl User {
 
                 rows.into_iter()
                     .map(|user| User {
-                        id: Some(user.user_id),
+                        uuid: user.uuid,
                         info: UserInfo {
-                            full_name: Some(user.ui_full_name),
+                            full_name: Some(user.full_name),
                             ..Default::default()
                         },
                         user_role: Some(UserRole::from(user.user_role)),
@@ -502,16 +522,16 @@ impl User {
 }
 
 impl UserRole {
-    pub async fn get_managers(db: &Database, user: User) -> Result<Vec<ManagerNameDto>> {
+    pub async fn get_managers(db: &Database, user_id: i32) -> Result<Vec<ManagerNameDto>> {
         let rows = sqlx::query!(
             r#"
-            SELECT u.id AS user_id, ui.full_name AS full_name, user_role
+            SELECT u.uuid as user_uuid, ui.full_name, user_role
             FROM users u
             JOIN user_info ui ON ui.user_id = u.id
             WHERE (u.user_role = 'Manager' OR u.user_role = 'Leader') AND u.id != $1
             ORDER BY u.user_role ASC, ui.full_name
             "#,
-            user.id
+            user_id
         )
         .fetch_all(&db.pool)
         .await?;
@@ -519,7 +539,7 @@ impl UserRole {
         Ok(rows
             .into_iter()
             .map(|r| ManagerNameDto {
-                id: r.user_id,
+                uuid: r.user_uuid,
                 full_name: r.full_name,
                 user_role: r.user_role,
             })

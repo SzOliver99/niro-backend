@@ -1,18 +1,17 @@
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use serde::Serialize;
-
-use super::user::UserRole;
+use uuid::Uuid;
 
 #[derive(Serialize)]
 pub struct ManagerNameDto {
-    pub id: i32,
+    pub uuid: Option<Uuid>,
     pub full_name: String,
     pub user_role: String,
 }
 
 #[derive(Serialize)]
 pub struct LeadListItemDto {
-    pub id: i32,
+    pub uuid: Option<Uuid>,
     pub name: String,
     pub phone: String,
     pub email: String,

@@ -1,5 +1,6 @@
 use actix_web::{HttpResponse, Responder, ResponseError, Scope, web};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::{
     extractors::authentication_token::AuthenticationToken,
@@ -16,14 +17,14 @@ pub fn user_scope() -> Scope {
         .route("/register", web::post().to(create_user))
         .route("/login/username", web::post().to(sign_in_via_username))
         .route("/role", web::get().to(get_user_role))
-        .route("/list", web::get().to(get_users))
-        .route("/list/by-id", web::post().to(get_users_by_id))
+        .route("/get-all", web::get().to(get_users))
+        .route("/get", web::post().to(get_users_by_uuid))
         .route("/sub-users", web::post().to(get_user_sub_users))
         .route("/manager", web::put().to(modify_user_manager))
         .route("/delete", web::delete().to(delete_user))
         .route("/info", web::get().to(get_user_informations_by_id))
         .route("/info", web::put().to(modify_user_info))
-        .route("/managers/list", web::post().to(get_manager_names))
+        .route("/managers/get-all", web::post().to(get_managers))
         .route("/protected", web::get().to(protected_route))
 }
 
@@ -33,13 +34,7 @@ struct UserJson {
     username: Option<String>,
     password: Option<String>,
     info: UserInfo,
-    manager_id: Option<i32>,
-}
-
-#[derive(Deserialize, Debug)]
-struct SignInJson {
-    username: String,
-    password: String,
+    manager_uuid: Option<Uuid>,
 }
 
 async fn create_user(
@@ -62,7 +57,7 @@ async fn create_user(
             agent_code: data.info.agent_code.clone(),
             ..Default::default()
         },
-        manager_id: data.manager_id.clone(),
+        manager_uuid: data.manager_uuid,
         ..Default::default()
     };
 
@@ -72,6 +67,11 @@ async fn create_user(
     }
 }
 
+#[derive(Deserialize, Debug)]
+struct SignInJson {
+    username: String,
+    password: String,
+}
 async fn sign_in_via_username(
     web_data: web::Data<WebData>,
     data: web::Json<SignInJson>,
@@ -102,22 +102,17 @@ async fn get_users(
     }
 }
 
-async fn get_users_by_id(
+async fn get_users_by_uuid(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
-    data: web::Json<Option<i32>>,
+    data: web::Json<Uuid>,
 ) -> impl Responder {
     if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
     {
         return ApiError::from(e).error_response();
     }
 
-    let user_id = match data.0 {
-        Some(id) => id,
-        None => auth_token.id as i32,
-    };
-
-    match User::get_users_by_id(&web_data.db, user_id).await {
+    match User::get_users_by_id(&web_data.db, data.0).await {
         Ok(users) => HttpResponse::Ok().json(users),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -125,7 +120,7 @@ async fn get_users_by_id(
 
 #[derive(Deserialize, Clone, Debug)]
 struct ModifyUserInfoJson {
-    id: Option<i32>,
+    user_uuid: Uuid,
     email: String,
     info: UserInfo,
 }
@@ -140,17 +135,12 @@ async fn modify_user_info(
     }
 
     let user = User {
-        id: if data.id.is_some() {
-            data.id
-        } else {
-            Some(auth_token.id as i32)
-        },
         email: Some(data.email.clone()),
         info: data.info.clone(),
         ..Default::default()
     };
 
-    match User::modify_info(&web_data.db, user).await {
+    match User::modify_info(&web_data.db, data.user_uuid, user).await {
         Ok(_) => HttpResponse::Ok().json({}),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -158,8 +148,8 @@ async fn modify_user_info(
 
 #[derive(Deserialize, Clone, Debug)]
 struct ModifyUserManagerJson {
-    id: i32,
-    manager_id: Option<i32>,
+    user_uuid: Uuid,
+    manager_uuid: Option<Uuid>,
 }
 async fn modify_user_manager(
     web_data: web::Data<WebData>,
@@ -171,12 +161,11 @@ async fn modify_user_manager(
     }
 
     let user = User {
-        id: Some(data.id),
-        manager_id: data.manager_id,
+        manager_uuid: data.manager_uuid,
         ..Default::default()
     };
 
-    match User::modify_manager(&web_data.db, user).await {
+    match User::modify_manager(&web_data.db, data.user_uuid, user).await {
         Ok(_) => HttpResponse::Ok().json({}),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -185,18 +174,13 @@ async fn modify_user_manager(
 async fn delete_user(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
-    data: web::Json<i32>,
+    data: web::Json<Uuid>,
 ) -> impl Responder {
     if let Err(e) = User::require_role(&web_data.db, UserRole::Leader, auth_token.id as i32).await {
         return ApiError::from(e).error_response();
     }
 
-    let user = User {
-        id: Some(data.0),
-        ..Default::default()
-    };
-
-    match User::delete(&web_data.db, user).await {
+    match User::delete(&web_data.db, data.0).await {
         Ok(_) => HttpResponse::Ok().json({}),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -222,16 +206,21 @@ async fn get_user_role(
     }
 }
 
-async fn get_manager_names(
+async fn get_managers(
     web_data: web::Data<WebData>,
-    data: web::Json<Option<i32>>,
+    _: AuthenticationToken,
+    data: web::Json<Option<Uuid>>,
 ) -> impl Responder {
-    let user = User {
-        id: data.0,
-        ..Default::default()
+    println!("{:?}", data);
+    let user_id = match data.0 {
+        Some(user_uuid) => User::get_id_by_uuid(&web_data.db, Some(user_uuid))
+            .await
+            .unwrap()
+            .unwrap(),
+        None => 0,
     };
 
-    match UserRole::get_managers(&web_data.db, user).await {
+    match UserRole::get_managers(&web_data.db, user_id).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }
