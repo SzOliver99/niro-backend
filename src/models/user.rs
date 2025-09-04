@@ -343,7 +343,6 @@ impl User {
         }
 
         let manager_id = Self::get_id_by_uuid(db, user.manager_uuid).await?;
-        println!("{user_id} {manager_id:?}");
         if let Some(manager_id) = manager_id {
             sqlx::query!(
                 "UPDATE users

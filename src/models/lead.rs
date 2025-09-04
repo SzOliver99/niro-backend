@@ -21,6 +21,7 @@ pub struct Lead {
     pub inquiry_type: Option<String>,
     pub lead_status: Option<LeadStatus>,
     pub handle_at: Option<DateTime<Utc>>,
+    pub created_by: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Type, Clone)]
@@ -100,9 +101,7 @@ impl Lead {
         } else {
             Customer::create(db, key, hmac_secret, customer.clone()).await?
         };
-        let user_id = User::get_id_by_uuid(db, customer.uuid)
-            .await?
-            .unwrap();
+        let user_id = User::get_id_by_uuid(db, customer.uuid).await?.unwrap();
 
         let _row = sqlx::query!(
             "INSERT INTO customer_leads(lead_type, inquiry_type, lead_status, customer_id, user_id, created_by)
@@ -127,7 +126,6 @@ impl Lead {
         user_uuid: Uuid,
     ) -> Result<Vec<LeadListItemDto>> {
         let user_id = User::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
-        println!("{user_id:?}");
         let rows = sqlx::query!(
             "SELECT c.full_name, c.phone_number_enc, c.phone_number_nonce, c.email_enc, c.email_nonce, c.address_enc, c.address_nonce, c.created_by, l.uuid, l.lead_type, l.inquiry_type, l.lead_status, l.handle_at
              FROM customers c
@@ -158,6 +156,61 @@ impl Lead {
             .collect();
 
         Ok(items)
+    }
+
+    pub async fn get_by_customer_uuid(db: &Database, customer_uuid: Uuid) -> Result<Vec<Lead>> {
+        let customer_id = Customer::get_id_by_uuid(db, Some(customer_uuid))
+            .await?
+            .unwrap();
+        println!("{customer_id}");
+        let rows = sqlx::query!(
+            "SELECT
+                uuid,
+                lead_type,
+                inquiry_type,
+                lead_status,
+                handle_at,
+                created_by
+            FROM
+                customer_leads
+            WHERE
+	            customer_id = $1",
+            customer_id
+        )
+        .fetch_all(&db.pool)
+        .await?;
+
+        let items: Vec<Lead> = rows
+            .into_iter()
+            .map(|row| Lead {
+                uuid: row.uuid,
+                lead_type: Some(row.lead_type),
+                inquiry_type: Some(row.inquiry_type),
+                lead_status: Some(LeadStatus::from(row.lead_status)),
+                handle_at: Some(row.handle_at),
+                created_by: Some(row.created_by),
+                ..Default::default()
+            })
+            .collect();
+
+        Ok(items)
+    }
+
+    pub async fn get_customer_uuid(db: &Database, lead_uuid: Uuid) -> Result<Option<Uuid>> {
+        let customer = sqlx::query!(
+            "SELECT
+                c.uuid
+            FROM
+                customers c
+                JOIN customer_leads l ON c.id = l.customer_id
+            WHERE 
+                l.uuid = $1",
+            lead_uuid
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(customer.uuid)
     }
 
     pub async fn change_handler(

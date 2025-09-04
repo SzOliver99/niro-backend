@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                c.uuid\n            FROM\n                customers c\n                JOIN customer_leads l ON c.id = l.customer_id\n            WHERE \n                l.uuid = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "cea2c211ee1654725c747b38726929e6bb99526b9904af2f21b1acae6a96793b"
+}

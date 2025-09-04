@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS user_dates(
 
     phone_number_enc BYTEA NOT NULL,
     phone_number_nonce BYTEA NOT NULL,
-    phone_number_hash BYTEA UNIQUE,
+    phone_number_hash BYTEA,
 
     meet_location VARCHAR(254) NOT NULL,
     meet_type VARCHAR(254) NOT NULL,

@@ -211,7 +211,6 @@ async fn get_managers(
     _: AuthenticationToken,
     data: web::Json<Option<Uuid>>,
 ) -> impl Responder {
-    println!("{:?}", data);
     let user_id = match data.0 {
         Some(user_uuid) => User::get_id_by_uuid(&web_data.db, Some(user_uuid))
             .await

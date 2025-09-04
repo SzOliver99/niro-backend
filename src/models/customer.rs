@@ -24,16 +24,16 @@ pub struct Customer {
 }
 
 impl Customer {
-    pub async fn get_id_by_uuid(db: &Database, user_uuid: Option<Uuid>) -> Result<Option<i32>> {
-        let user = sqlx::query_scalar!("SELECT id FROM customers WHERE uuid = $1", user_uuid)
+    pub async fn get_id_by_uuid(db: &Database, customer_uuid: Option<Uuid>) -> Result<Option<i32>> {
+        let user = sqlx::query_scalar!("SELECT id FROM customers WHERE uuid = $1", customer_uuid)
             .fetch_optional(&db.pool)
             .await?;
 
         Ok(user)
     }
 
-    pub async fn get_uuid_by_id(db: &Database, user_id: i32) -> Result<Option<Uuid>> {
-        let user = sqlx::query!("SELECT uuid FROM customers WHERE id = $1", user_id)
+    pub async fn get_uuid_by_id(db: &Database, customer_id: i32) -> Result<Option<Uuid>> {
+        let user = sqlx::query!("SELECT uuid FROM customers WHERE id = $1", customer_id)
             .fetch_one(&db.pool)
             .await?;
 

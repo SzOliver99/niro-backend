@@ -2,4 +2,4 @@ pub mod encrypt;
 pub mod error;
 pub mod jwt;
 pub mod password_hashing;
-pub mod redis;
+// pub mod redis;

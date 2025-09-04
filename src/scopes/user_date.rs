@@ -54,7 +54,6 @@ async fn create_date(
         created_by: Some(data.created_by.clone()),
         ..Default::default()
     };
-    println!("User_date: {:?}", user_date);
 
     match UserMeetDate::create(
         &web_data.db,
