@@ -120,6 +120,25 @@ impl Lead {
         Ok(())
     }
 
+    pub async fn modify(db: &Database, lead_uuid: Uuid, updated_lead: Lead) -> Result<()> {
+        sqlx::query!(
+            "UPDATE customer_leads
+             SET lead_type = $1,
+                 inquiry_type = $2,
+                 lead_status = $3,
+                 handle_at = NOW()
+             WHERE uuid = $4",
+            updated_lead.lead_type,
+            updated_lead.inquiry_type,
+            updated_lead.lead_status.map(|s| s.to_string()),
+            lead_uuid
+        )
+        .execute(&db.pool)
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn get_all(
         db: &Database,
         key: &Key,

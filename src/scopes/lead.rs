@@ -16,6 +16,7 @@ use crate::{
 pub fn lead_scope() -> Scope {
     web::scope("/lead")
         .route("/create", web::post().to(create_lead))
+        .route("/modify", web::put().to(modify_lead))
         .route("/get-all", web::post().to(get_leads_by_user_uuid))
         .route("/get/uuid", web::post().to(get_lead_by_uuid))
         .route("/customer/uuid", web::post().to(get_customer_uuid))
@@ -69,6 +70,30 @@ async fn create_lead(
     .await
     {
         Ok(_) => HttpResponse::Created().json("Registration successful!"),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+#[derive(Deserialize, Clone)]
+struct ModifyLeadJson {
+    lead_uuid: Uuid,
+    lead_type: String,
+    inquiry_type: String,
+    lead_status: LeadStatus,
+}
+async fn modify_lead(
+    web_data: web::Data<WebData>,
+    data: web::Json<ModifyLeadJson>,
+) -> impl Responder {
+    let lead = Lead {
+        lead_type: Some(data.lead_type.clone()),
+        inquiry_type: Some(data.inquiry_type.clone()),
+        lead_status: Some(data.lead_status.clone()),
+        ..Default::default()
+    };
+
+    match Lead::modify(&web_data.db, data.lead_uuid, lead).await {
+        Ok(_) => HttpResponse::Created().json("Sikeresen megváltoztattad a tevékenységet!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
