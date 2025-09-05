@@ -196,6 +196,35 @@ impl Lead {
         Ok(items)
     }
 
+    pub async fn get_by_uuid(db: &Database, lead_uuid: Uuid) -> Result<Lead> {
+        let row = sqlx::query!(
+            "SELECT
+                uuid,
+                lead_type,
+                inquiry_type,
+                lead_status,
+                handle_at,
+                created_by
+            FROM
+                customer_leads
+            WHERE
+	            uuid = $1",
+            lead_uuid
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(Lead {
+            uuid: row.uuid,
+            lead_type: Some(row.lead_type),
+            inquiry_type: Some(row.inquiry_type),
+            lead_status: Some(LeadStatus::from(row.lead_status)),
+            handle_at: Some(row.handle_at),
+            created_by: Some(row.created_by),
+            ..Default::default()
+        })
+    }
+
     pub async fn get_customer_uuid(db: &Database, lead_uuid: Uuid) -> Result<Option<Uuid>> {
         let customer = sqlx::query!(
             "SELECT

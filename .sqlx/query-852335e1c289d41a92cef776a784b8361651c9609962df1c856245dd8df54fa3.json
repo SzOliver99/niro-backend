@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                uuid,\n                lead_type,\n                inquiry_type,\n                lead_status,\n                handle_at,\n                created_by\n            FROM\n                customer_leads\n            WHERE\n\t            uuid = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "lead_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "inquiry_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "lead_status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "handle_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_by",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "852335e1c289d41a92cef776a784b8361651c9609962df1c856245dd8df54fa3"
+}
