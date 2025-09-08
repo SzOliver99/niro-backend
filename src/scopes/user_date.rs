@@ -32,6 +32,7 @@ struct CreateDateJson {
 
 async fn create_date(
     web_data: web::Data<WebData>,
+    _: AuthenticationToken,
     data: web::Json<CreateDateJson>,
 ) -> impl Responder {
     let parsed_date = chrono::NaiveDateTime::parse_from_str(&data.meet_date, "%Y-%m-%dT%H:%M")
@@ -118,7 +119,7 @@ async fn change_date_state(
     data: web::Json<ChangeUserDateStateJson>,
 ) -> impl Responder {
     match UserMeetDate::change_date_state(&web_data.db, data.date_uuid, data.value).await {
-        Ok(_) => HttpResponse::Ok().json("Időpont státusza megváltoztatva!"),
+        Ok(_) => HttpResponse::Ok().json("Időpont(ok) státusza megváltoztatva!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }

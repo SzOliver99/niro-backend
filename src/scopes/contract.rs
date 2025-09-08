@@ -4,24 +4,24 @@ use uuid::Uuid;
 
 use crate::{
     extractors::authentication_token::AuthenticationToken,
-    models::user::{User, UserRole},
     models::{
+        contract::{Contract, ContractType, PaymentFrequency, PaymentMethod},
         customer::Customer,
-        lead::{Lead, LeadStatus},
+        user::{User, UserRole},
     },
     utils::error::ApiError,
     web_data::WebData,
 };
 
-pub fn lead_scope() -> Scope {
-    web::scope("/lead")
-        .route("/create", web::post().to(create_lead))
-        .route("/modify", web::put().to(modify_lead))
-        .route("/get-all", web::post().to(get_leads_by_user_uuid))
-        .route("/get/uuid", web::post().to(get_lead_by_uuid))
+pub fn contract_scope() -> Scope {
+    web::scope("/contract")
+        .route("/create", web::post().to(create_contract))
+        .route("/modify", web::put().to(modify_contract))
+        .route("/get-all", web::post().to(get_contracts_by_user_uuid))
+        .route("/get/uuid", web::post().to(get_contract_by_uuid))
         .route("/customer/uuid", web::post().to(get_customer_uuid))
-        .route("/change/user", web::post().to(change_lead_handler))
-        .route("/delete", web::delete().to(delete_lead))
+        .route("/change/user", web::post().to(change_contract_handler))
+        .route("/delete", web::delete().to(delete_contract))
 }
 
 #[derive(Deserialize, Clone)]
@@ -32,17 +32,20 @@ struct CustomerJson {
     email: String,
 }
 #[derive(Deserialize, Clone)]
-struct CreateLeadJson {
+struct CreateContractJson {
     customer: CustomerJson,
-    lead_type: String,
-    inquiry_type: String,
-    lead_status: LeadStatus,
+    contract_number: String,
+    contract_type: ContractType,
+    annual_fee: i32,
+    payment_frequency: PaymentFrequency,
+    payment_method: PaymentMethod,
     user_uuid: Uuid,
     created_by: String,
 }
-async fn create_lead(
+async fn create_contract(
     web_data: web::Data<WebData>,
-    data: web::Json<CreateLeadJson>,
+    _: AuthenticationToken,
+    data: web::Json<CreateContractJson>,
 ) -> impl Responder {
     let customer = Customer {
         full_name: Some(data.customer.full_name.clone()),
@@ -52,71 +55,77 @@ async fn create_lead(
         created_by: Some(data.created_by.clone()),
         ..Default::default()
     };
-    let lead = Lead {
-        lead_type: Some(data.lead_type.clone()),
-        inquiry_type: Some(data.inquiry_type.clone()),
-        lead_status: Some(data.lead_status.clone()),
+    let contract = Contract {
+        contract_number: Some(data.contract_number.clone()),
+        contract_type: Some(data.contract_type.clone()),
+        annual_fee: Some(data.annual_fee.clone()),
+        payment_frequency: Some(data.payment_frequency.clone()),
+        payment_method: Some(data.payment_method.clone()),
         created_by: Some(data.created_by.clone()),
         ..Default::default()
     };
 
-    match Lead::create(
+    match Contract::create(
         &web_data.db,
         &web_data.key,
         &web_data.hmac_secret,
         data.user_uuid,
         customer,
-        lead,
+        contract,
     )
     .await
     {
-        Ok(_) => HttpResponse::Created().json("Tevékenység sikeresen létrehozva!"),
+        Ok(_) => HttpResponse::Created().json("Szerződés sikeresen létrehozva!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
 
 #[derive(Deserialize, Clone)]
-struct ModifyLeadJson {
-    lead_uuid: Uuid,
-    lead_type: String,
-    inquiry_type: String,
-    lead_status: LeadStatus,
+struct ModifyContractJson {
+    contract_uuid: Uuid,
+    contract_number: String,
+    contract_type: ContractType,
+    annual_fee: i32,
+    payment_frequency: PaymentFrequency,
+    payment_method: PaymentMethod,
 }
-async fn modify_lead(
+async fn modify_contract(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
-    data: web::Json<ModifyLeadJson>,
+    data: web::Json<ModifyContractJson>,
 ) -> impl Responder {
-    let lead = Lead {
-        lead_type: Some(data.lead_type.clone()),
-        inquiry_type: Some(data.inquiry_type.clone()),
-        lead_status: Some(data.lead_status.clone()),
+    let contract = Contract {
+        contract_number: Some(data.contract_number.clone()),
+        contract_type: Some(data.contract_type.clone()),
+        annual_fee: Some(data.annual_fee),
+        payment_frequency: Some(data.payment_frequency.clone()),
+        payment_method: Some(data.payment_method.clone()),
         ..Default::default()
     };
 
-    match Lead::modify(&web_data.db, data.lead_uuid, lead).await {
-        Ok(_) => HttpResponse::Created().json("Sikeresen megváltoztattad a tevékenységet!"),
+    match Contract::modify(&web_data.db, data.contract_uuid, contract).await {
+        Ok(_) => HttpResponse::Created().json("Sikeresen megváltoztattad a szerződést!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
 
-async fn get_leads_by_user_uuid(
+async fn get_contracts_by_user_uuid(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
     data: web::Json<Uuid>,
 ) -> impl Responder {
-    match Lead::get_all(&web_data.db, &web_data.key, data.0).await {
+    match Contract::get_all(&web_data.db, &web_data.key, data.0).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
 
-async fn get_lead_by_uuid(
+async fn get_contract_by_uuid(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
     data: web::Json<Uuid>,
 ) -> impl Responder {
-    match Lead::get_by_uuid(&web_data.db, data.0).await {
+    match Contract::get_by_uuid(&web_data.db, data.0).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -127,7 +136,7 @@ async fn get_customer_uuid(
     _: AuthenticationToken,
     data: web::Json<Uuid>,
 ) -> impl Responder {
-    match Lead::get_customer_uuid(&web_data.db, data.0).await {
+    match Contract::get_customer_uuid(&web_data.db, data.0).await {
         Ok(customer_uuid) => HttpResponse::Ok().json(customer_uuid),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -136,9 +145,9 @@ async fn get_customer_uuid(
 #[derive(Deserialize)]
 struct ChangeLeadsHandlerJson {
     user_full_name: String,
-    lead_uuids: Vec<Uuid>,
+    contract_uuids: Vec<Uuid>,
 }
-async fn change_lead_handler(
+async fn change_contract_handler(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
     data: web::Json<ChangeLeadsHandlerJson>,
@@ -147,21 +156,19 @@ async fn change_lead_handler(
         return ApiError::from(e).error_response();
     }
 
-    match Lead::change_handler(
+    match Contract::change_handler(
         &web_data.db,
         data.user_full_name.clone(),
-        data.lead_uuids.clone(),
+        data.contract_uuids.clone(),
     )
     .await
     {
-        Ok(_) => {
-            HttpResponse::Created().json("Tevékenység(ek)ért felelős üzletkötő megváltoztatva!")
-        }
+        Ok(_) => HttpResponse::Created().json("Szerződésért felelős üzletkötő megváltoztatva!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
 
-async fn delete_lead(
+async fn delete_contract(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
     data: web::Json<Vec<Uuid>>,
@@ -170,8 +177,8 @@ async fn delete_lead(
         return ApiError::from(e).error_response();
     }
 
-    match Lead::delete(&web_data.db, data.0).await {
-        Ok(_) => HttpResponse::Created().json("Tevékenység(ek) sikeresen törölve!"),
+    match Contract::delete(&web_data.db, data.0).await {
+        Ok(_) => HttpResponse::Created().json("Szerződés(ek) sikeresen törölve!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }

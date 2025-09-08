@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                uuid,\n                contract_number,\n                contract_type,\n                annual_fee,\n                payment_frequency,\n                payment_method,\n                handle_at,\n                created_by\n            FROM\n                customer_contracts\n            WHERE\n\t            uuid = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "contract_number",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "contract_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "annual_fee",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "payment_frequency",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "payment_method",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "handle_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_by",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2d2ba5578fb7a3a4b09c7860e37fa3cd8ec22b300dfc695b1609a30b2de16314"
+}

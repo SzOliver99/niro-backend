@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE customer_contracts\n             SET contract_number = $1,\n                 contract_type = $2,\n                 annual_fee = $3,\n                 payment_frequency = $4,\n                 payment_method = $5,\n                 handle_at = NOW()\n             WHERE uuid = $6",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Int4",
+        "Varchar",
+        "Varchar",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dbba2e0a38cf6de395bc2ebdda88f7938466f12fa7c1047cd0a628b9aed557b2"
+}

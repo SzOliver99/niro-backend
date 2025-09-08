@@ -1,9 +1,12 @@
-use anyhow::{Ok, Result};
+use std::str::FromStr;
+
+use anyhow::Result;
 use chacha20poly1305::Key;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use sqlx::prelude::Type;
+use strum::{AsRefStr, Display, EnumString};
 use uuid::Uuid;
 
 use crate::{
@@ -24,32 +27,11 @@ pub struct Lead {
     pub created_by: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Type, Clone)]
+#[derive(Debug, Serialize, Deserialize, Type, Clone, AsRefStr, EnumString, Display)]
 pub enum LeadStatus {
     Opened,
     InProgress,
     Closed,
-}
-
-impl std::fmt::Display for LeadStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            LeadStatus::Opened => "Opened",
-            LeadStatus::InProgress => "InProgress",
-            LeadStatus::Closed => "Closed",
-        };
-        write!(f, "{}", s)
-    }
-}
-
-impl From<String> for LeadStatus {
-    fn from(value: String) -> Self {
-        match value.as_str() {
-            "InProgress" => LeadStatus::InProgress,
-            "Closed" => LeadStatus::Closed,
-            _ => LeadStatus::Opened,
-        }
-    }
 }
 
 impl Lead {
@@ -83,9 +65,11 @@ impl Lead {
         db: &Database,
         key: &Key,
         hmac_secret: &HmacSecret,
+        user_uuid: Uuid,
         customer: Customer,
         lead: Lead,
     ) -> Result<()> {
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
         let row = sqlx::query!(
             "SELECT id FROM customers
              WHERE email_hash = $1 OR phone_number_hash = $2",
@@ -99,9 +83,8 @@ impl Lead {
         let customer_id = if let Some(existing) = row {
             existing.id
         } else {
-            Customer::create(db, key, hmac_secret, customer.clone()).await?
+            Customer::create(db, key, hmac_secret, user_uuid, customer.clone()).await?
         };
-        let user_id = User::get_id_by_uuid(db, customer.uuid).await?.unwrap();
 
         let _row = sqlx::query!(
             "INSERT INTO customer_leads(lead_type, inquiry_type, lead_status, customer_id, user_id, created_by)
@@ -109,10 +92,10 @@ impl Lead {
              RETURNING id",
             lead.lead_type,
             lead.inquiry_type,
-            lead.lead_status.map(|s| s.to_string()),
+            lead.lead_status.map(|l| l.to_string()),
             customer_id,
             user_id,
-            customer.created_by
+            lead.created_by
         )
         .fetch_one(&db.pool)
         .await?;
@@ -146,7 +129,7 @@ impl Lead {
     ) -> Result<Vec<LeadListItemDto>> {
         let user_id = User::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
         let rows = sqlx::query!(
-            "SELECT c.full_name, c.phone_number_enc, c.phone_number_nonce, c.email_enc, c.email_nonce, c.address_enc, c.address_nonce, c.created_by, l.uuid, l.lead_type, l.inquiry_type, l.lead_status, l.handle_at
+            "SELECT c.full_name, c.phone_number_enc, c.phone_number_nonce, c.email_enc, c.email_nonce, c.address_enc, c.address_nonce, l.uuid, l.lead_type, l.inquiry_type, l.lead_status, l.handle_at, l.created_by
              FROM customers c
              JOIN customer_leads l ON l.customer_id = c.id
              WHERE l.user_id = $1",
@@ -159,9 +142,13 @@ impl Lead {
             .into_iter()
             .map(|row| LeadListItemDto {
                 uuid: row.uuid,
-                name: row.full_name,
-                phone: encrypt::decrypt_value(key, &row.phone_number_enc, &row.phone_number_nonce)
-                    .unwrap_or_default(),
+                full_name: row.full_name,
+                phone_number: encrypt::decrypt_value(
+                    key,
+                    &row.phone_number_enc,
+                    &row.phone_number_nonce,
+                )
+                .unwrap_or_default(),
                 email: encrypt::decrypt_value(key, &row.email_enc, &row.email_nonce)
                     .unwrap_or_default(),
                 address: encrypt::decrypt_value(key, &row.address_enc, &row.address_nonce)
@@ -205,7 +192,7 @@ impl Lead {
                 uuid: row.uuid,
                 lead_type: Some(row.lead_type),
                 inquiry_type: Some(row.inquiry_type),
-                lead_status: Some(LeadStatus::from(row.lead_status)),
+                lead_status: LeadStatus::from_str(&row.lead_status).ok(),
                 handle_at: Some(row.handle_at),
                 created_by: Some(row.created_by),
                 ..Default::default()
@@ -237,7 +224,7 @@ impl Lead {
             uuid: row.uuid,
             lead_type: Some(row.lead_type),
             inquiry_type: Some(row.inquiry_type),
-            lead_status: Some(LeadStatus::from(row.lead_status)),
+            lead_status: LeadStatus::from_str(&row.lead_status).ok(),
             handle_at: Some(row.handle_at),
             created_by: Some(row.created_by),
             ..Default::default()
@@ -264,7 +251,7 @@ impl Lead {
     pub async fn change_handler(
         db: &Database,
         user_full_name: String,
-        customer_uuids: Vec<Uuid>,
+        lead_uuids: Vec<Uuid>,
     ) -> Result<()> {
         let user = sqlx::query!(
             "SELECT user_id as id FROM user_info WHERE full_name = $1",
@@ -277,7 +264,7 @@ impl Lead {
             "UPDATE customer_leads
              SET user_id = $2
              WHERE uuid = ANY($1)",
-            &customer_uuids,
+            &lead_uuids,
             user.id
         )
         .execute(&db.pool)

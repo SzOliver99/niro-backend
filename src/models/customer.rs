@@ -75,13 +75,14 @@ impl Customer {
         db: &Database,
         key: &Key,
         hmac_secret: &HmacSecret,
+        user_uuid: Uuid,
         new_customer: Customer,
     ) -> Result<i32> {
         if Self::is_exists(db, &hmac_secret, &new_customer).await? {
             return Err(anyhow::anyhow!("Az ügyfél már szerepel az adatbázisban."));
         }
 
-        let user_id = User::get_id_by_uuid(db, new_customer.uuid).await?.unwrap();
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
 
         let email = new_customer.email.as_deref().unwrap();
         let phone = new_customer.phone_number.as_deref().unwrap();

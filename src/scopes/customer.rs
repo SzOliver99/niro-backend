@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::{
     extractors::authentication_token::AuthenticationToken,
     models::{
+        contract::Contract,
         customer::Customer,
         lead::Lead,
         user::{User, UserRole},
@@ -18,6 +19,7 @@ pub fn customer_scope() -> Scope {
         .route("/create", web::post().to(create_customer))
         .route("/modify", web::put().to(modify_customer))
         .route("/leads", web::post().to(get_leads_by_customer_uuid))
+        .route("/contracts", web::post().to(get_contracts_by_customer_uuid))
         .route("/get-all", web::post().to(get_customers_by_uuid))
         .route("/get", web::post().to(get_customer_by_uuid))
         .route("/change/user", web::post().to(change_customer_handler))
@@ -38,7 +40,6 @@ async fn create_customer(
     data: web::Json<CreateCustomerJson>,
 ) -> impl Responder {
     let customer = Customer {
-        uuid: Some(data.user_uuid),
         full_name: Some(data.full_name.clone()),
         phone_number: Some(data.phone_number.clone()),
         address: Some(data.address.clone()),
@@ -47,7 +48,15 @@ async fn create_customer(
         ..Default::default()
     };
 
-    match Customer::create(&web_data.db, &web_data.key, &web_data.hmac_secret, customer).await {
+    match Customer::create(
+        &web_data.db,
+        &web_data.key,
+        &web_data.hmac_secret,
+        data.user_uuid,
+        customer,
+    )
+    .await
+    {
         Ok(_) => HttpResponse::Created().json("Sikeresen létre lett hozva!"),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -104,6 +113,17 @@ async fn get_leads_by_customer_uuid(
     data: web::Json<Uuid>,
 ) -> impl Responder {
     match Lead::get_by_customer_uuid(&web_data.db, data.0).await {
+        Ok(list) => HttpResponse::Ok().json(list),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_contracts_by_customer_uuid(
+    web_data: web::Data<WebData>,
+    _: AuthenticationToken,
+    data: web::Json<Uuid>,
+) -> impl Responder {
+    match Contract::get_by_customer_uuid(&web_data.db, data.0).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }

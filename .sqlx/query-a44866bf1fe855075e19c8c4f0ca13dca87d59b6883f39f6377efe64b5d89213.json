@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT c.full_name, c.phone_number_enc, c.phone_number_nonce, c.email_enc, c.email_nonce, c.address_enc, c.address_nonce, c.created_by, l.uuid, l.lead_type, l.inquiry_type, l.lead_status, l.handle_at\n             FROM customers c\n             JOIN customer_leads l ON l.customer_id = c.id\n             WHERE l.user_id = $1",
+  "query": "SELECT c.full_name, c.phone_number_enc, c.phone_number_nonce, c.email_enc, c.email_nonce, c.address_enc, c.address_nonce, l.uuid, l.lead_type, l.inquiry_type, l.lead_status, l.handle_at, l.created_by\n             FROM customers c\n             JOIN customer_leads l ON l.customer_id = c.id\n             WHERE l.user_id = $1",
   "describe": {
     "columns": [
       {
@@ -40,33 +40,33 @@
       },
       {
         "ordinal": 7,
-        "name": "created_by",
-        "type_info": "Varchar"
-      },
-      {
-        "ordinal": 8,
         "name": "uuid",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 9,
+        "ordinal": 8,
         "name": "lead_type",
         "type_info": "Text"
       },
       {
-        "ordinal": 10,
+        "ordinal": 9,
         "name": "inquiry_type",
         "type_info": "Text"
       },
       {
-        "ordinal": 11,
+        "ordinal": 10,
         "name": "lead_status",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 12,
+        "ordinal": 11,
         "name": "handle_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "created_by",
+        "type_info": "Varchar"
       }
     ],
     "parameters": {
@@ -82,13 +82,13 @@
       false,
       false,
       false,
-      false,
       true,
+      false,
       false,
       false,
       false,
       false
     ]
   },
-  "hash": "88a595bf890581b994a1aa1951f6ff4c1197edd4866226740a8be4a104c8b627"
+  "hash": "a44866bf1fe855075e19c8c4f0ca13dca87d59b6883f39f6377efe64b5d89213"
 }
