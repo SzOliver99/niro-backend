@@ -71,7 +71,7 @@ impl Lead {
     ) -> Result<()> {
         let user_id = User::get_id_by_uuid(db, Some(user_uuid))
             .await?
-            .ok_or_else(|| anyhow!("User not found"))?;
+            .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
         let row = sqlx::query!(
             "SELECT id FROM customers
              WHERE email_hash = $1 OR phone_number_hash = $2",
@@ -131,7 +131,7 @@ impl Lead {
     ) -> Result<Vec<LeadListItemDto>> {
         let user_id = User::get_id_by_uuid(db, Some(user_uuid))
             .await?
-            .ok_or_else(|| anyhow!("User not found"))?;
+            .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
         let rows = sqlx::query!(
             "SELECT c.full_name, c.phone_number_enc, c.phone_number_nonce, c.email_enc, c.email_nonce, c.address_enc, c.address_nonce, l.uuid, l.lead_type, l.inquiry_type, l.lead_status, l.handle_at, l.created_by
              FROM customers c

@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Ok, Result};
+use anyhow::{Ok, Result, anyhow};
 use chacha20poly1305::Key;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::Serialize;
@@ -37,7 +37,7 @@ impl UserMeetDate {
     ) -> Result<i32> {
         let user_id = User::get_id_by_uuid(db, Some(user_uuid))
             .await?
-            .ok_or_else(|| anyhow!("User not found"))?;
+            .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
 
         let phone = new_meet_date.phone_number.as_deref().unwrap();
         let phone_hash = encrypt::hash_value(&hmac_secret, phone);
@@ -71,7 +71,7 @@ impl UserMeetDate {
     ) -> Result<Vec<UserMeetDate>> {
         let user_id = User::get_id_by_uuid(db, Some(user_uuid))
             .await?
-            .ok_or_else(|| anyhow!("User not found"))?;
+            .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
 
         let rows = sqlx::query!(
             "SELECT uuid, meet_date, full_name, phone_number_enc, phone_number_nonce, phone_number_hash, meet_location, meet_type, is_completed, created_by, created_at

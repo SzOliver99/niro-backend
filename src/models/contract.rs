@@ -122,7 +122,7 @@ impl Contract {
     ) -> Result<i32> {
         let user_id = User::get_id_by_uuid(db, Some(user_uuid))
             .await?
-            .ok_or_else(|| anyhow!("User not found"))?;
+            .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
         let row = sqlx::query!(
             "SELECT id FROM customers
              WHERE email_hash = $1 OR phone_number_hash = $2",
@@ -188,7 +188,7 @@ impl Contract {
     pub async fn get_all(db: &Database, key: &Key, user_uuid: Uuid) -> Result<Vec<ContractDto>> {
         let user_id = User::get_id_by_uuid(db, Some(user_uuid))
             .await?
-            .ok_or_else(|| anyhow!("User not found"))?;
+            .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
 
         let rows = sqlx::query!(
             r#"

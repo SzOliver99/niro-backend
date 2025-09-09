@@ -84,7 +84,7 @@ impl Customer {
 
         let user_id = User::get_id_by_uuid(db, Some(user_uuid))
             .await?
-            .ok_or_else(|| anyhow!("User not found"))?;
+            .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
 
         let email = new_customer.email.as_deref().unwrap();
         let phone = new_customer.phone_number.as_deref().unwrap();
@@ -193,7 +193,7 @@ impl Customer {
     pub async fn get_all(db: &Database, key: &Key, user_uuid: Uuid) -> Result<Vec<Self>> {
         let user_id = User::get_id_by_uuid(db, Some(user_uuid))
             .await?
-            .ok_or_else(|| anyhow!("User not found"))?;
+            .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
         let row = sqlx::query!(
             "SELECT uuid, full_name, phone_number_enc, phone_number_nonce, email_enc, email_nonce, address_enc, address_nonce, user_id, created_by
              FROM customers

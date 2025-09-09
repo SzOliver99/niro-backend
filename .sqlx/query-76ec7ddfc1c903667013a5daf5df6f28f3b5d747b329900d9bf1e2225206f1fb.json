@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT c.full_name, c.phone_number_enc, c.phone_number_nonce, c.email_enc, c.email_nonce, c.address_enc, c.address_nonce, cc.uuid, cc.contract_number, cc.contract_type, cc.annual_fee, cc.payment_frequency, cc.payment_method, cc.handle_at, cc.created_by\n             FROM customers c\n             JOIN customer_contracts cc ON cc.customer_id = c.id\n             WHERE cc.user_id = $1",
+  "query": "\n            SELECT\n                c.full_name,\n                c.phone_number_enc,\n                c.phone_number_nonce,\n                c.email_enc,\n                c.email_nonce,\n                c.address_enc,\n                c.address_nonce,\n                cc.uuid,\n                cc.contract_number,\n                cc.contract_type,\n                cc.annual_fee,\n                cc.payment_frequency,\n                cc.payment_method,\n                cc.handle_at,\n                cc.created_by\n            FROM\n                customers c\n                JOIN customer_contracts cc ON cc.customer_id = c.id\n            WHERE\n                cc.user_id = $1\n            ORDER BY cc.handle_at DESC\n            ",
   "describe": {
     "columns": [
       {
@@ -102,5 +102,5 @@
       false
     ]
   },
-  "hash": "f840738fde5ab8a78859c98ddcafc78ab5930d3c58d83ab3c1a832f8bd545311"
+  "hash": "76ec7ddfc1c903667013a5daf5df6f28f3b5d747b329900d9bf1e2225206f1fb"
 }
