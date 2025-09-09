@@ -1,4 +1,4 @@
-use anyhow::{Ok, Result};
+use anyhow::{Ok, Result, anyhow};
 use chacha20poly1305::Key;
 use serde::Serialize;
 use serde_with::skip_serializing_none;
@@ -79,10 +79,12 @@ impl Customer {
         new_customer: Customer,
     ) -> Result<i32> {
         if Self::is_exists(db, &hmac_secret, &new_customer).await? {
-            return Err(anyhow::anyhow!("Az ügyfél már szerepel az adatbázisban."));
+            return Err(anyhow!("Az ügyfél már szerepel az adatbázisban."));
         }
 
-        let user_id = User::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid))
+            .await?
+            .ok_or_else(|| anyhow!("User not found"))?;
 
         let email = new_customer.email.as_deref().unwrap();
         let phone = new_customer.phone_number.as_deref().unwrap();
@@ -189,7 +191,9 @@ impl Customer {
     }
 
     pub async fn get_all(db: &Database, key: &Key, user_uuid: Uuid) -> Result<Vec<Self>> {
-        let user_id = User::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid))
+            .await?
+            .ok_or_else(|| anyhow!("User not found"))?;
         let row = sqlx::query!(
             "SELECT uuid, full_name, phone_number_enc, phone_number_nonce, email_enc, email_nonce, address_enc, address_nonce, user_id, created_by
              FROM customers
@@ -253,7 +257,7 @@ impl Customer {
                 .await?
                 .unwrap();
             if !Customer::is_exists_by_id(db, customer_id).await? {
-                return Err(anyhow::anyhow!("Nem létező ügyfél"));
+                return Err(anyhow!("Nem létező ügyfél"));
             }
 
             sqlx::query!(

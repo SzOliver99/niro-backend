@@ -1,4 +1,5 @@
 use actix_web::{HttpResponse, Responder, ResponseError, Scope, web};
+use anyhow::anyhow;
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -42,7 +43,7 @@ async fn create_date(
 
     let meet_date = match parsed_date {
         Ok(d) => d,
-        Err(e) => return ApiError::from(anyhow::anyhow!(e)).error_response(),
+        Err(e) => return ApiError::from(anyhow!(e)).error_response(),
     };
 
     let user_date = UserMeetDate {

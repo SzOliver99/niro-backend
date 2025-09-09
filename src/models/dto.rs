@@ -26,7 +26,7 @@ pub struct LeadListItemDto {
 }
 
 #[derive(Serialize)]
-pub struct ContractListItemDto {
+pub struct ContractDto {
     pub uuid: Option<Uuid>,
     pub full_name: String,
     pub phone_number: String,

@@ -1,4 +1,4 @@
-use anyhow::{Ok, Result};
+use anyhow::{Ok, Result, anyhow};
 use chacha20poly1305::Key;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::{
     database::Database,
-    models::{customer::Customer, dto::ContractListItemDto, user::User},
+    models::{customer::Customer, dto::ContractDto, user::User},
     utils::encrypt::{self, HmacSecret},
 };
 
@@ -120,7 +120,9 @@ impl Contract {
         customer: Customer,
         contract: Contract,
     ) -> Result<i32> {
-        let user_id = User::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid))
+            .await?
+            .ok_or_else(|| anyhow!("User not found"))?;
         let row = sqlx::query!(
             "SELECT id FROM customers
              WHERE email_hash = $1 OR phone_number_hash = $2",
@@ -183,29 +185,52 @@ impl Contract {
         Ok(())
     }
 
-    pub async fn get_all(
-        db: &Database,
-        key: &Key,
-        user_uuid: Uuid,
-    ) -> Result<Vec<ContractListItemDto>> {
-        let user_id = User::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
+    pub async fn get_all(db: &Database, key: &Key, user_uuid: Uuid) -> Result<Vec<ContractDto>> {
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid))
+            .await?
+            .ok_or_else(|| anyhow!("User not found"))?;
+
         let rows = sqlx::query!(
-            "SELECT c.full_name, c.phone_number_enc, c.phone_number_nonce, c.email_enc, c.email_nonce, c.address_enc, c.address_nonce, cc.uuid, cc.contract_number, cc.contract_type, cc.annual_fee, cc.payment_frequency, cc.payment_method, cc.handle_at, cc.created_by
-             FROM customers c
-             JOIN customer_contracts cc ON cc.customer_id = c.id
-             WHERE cc.user_id = $1",
+            r#"
+            SELECT
+                c.full_name,
+                c.phone_number_enc,
+                c.phone_number_nonce,
+                c.email_enc,
+                c.email_nonce,
+                c.address_enc,
+                c.address_nonce,
+                cc.uuid,
+                cc.contract_number,
+                cc.contract_type,
+                cc.annual_fee,
+                cc.payment_frequency,
+                cc.payment_method,
+                cc.handle_at,
+                cc.created_by
+            FROM
+                customers c
+                JOIN customer_contracts cc ON cc.customer_id = c.id
+            WHERE
+                cc.user_id = $1
+            ORDER BY cc.handle_at DESC
+            "#,
             user_id
         )
         .fetch_all(&db.pool)
         .await?;
 
-        let items: Vec<ContractListItemDto> = rows
+        let contracts: Vec<ContractDto> = rows
             .into_iter()
-            .map(|row| ContractListItemDto {
+            .map(|row| ContractDto {
                 uuid: row.uuid,
                 full_name: row.full_name,
-                phone_number: encrypt::decrypt_value(key, &row.phone_number_enc, &row.phone_number_nonce)
-                    .unwrap_or_default(),
+                phone_number: encrypt::decrypt_value(
+                    key,
+                    &row.phone_number_enc,
+                    &row.phone_number_nonce,
+                )
+                .unwrap_or_default(),
                 email: encrypt::decrypt_value(key, &row.email_enc, &row.email_nonce)
                     .unwrap_or_default(),
                 address: encrypt::decrypt_value(key, &row.address_enc, &row.address_nonce)
@@ -220,7 +245,7 @@ impl Contract {
             })
             .collect();
 
-        Ok(items)
+        Ok(contracts)
     }
 
     pub async fn get_by_customer_uuid(db: &Database, customer_uuid: Uuid) -> Result<Vec<Contract>> {

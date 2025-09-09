@@ -1,4 +1,4 @@
-use anyhow::{Ok, Result};
+use anyhow::{anyhow, Ok, Result};
 use chacha20poly1305::Key;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::Serialize;
@@ -35,7 +35,9 @@ impl UserMeetDate {
         user_uuid: Uuid,
         new_meet_date: UserMeetDate,
     ) -> Result<i32> {
-        let user_id = User::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid))
+            .await?
+            .ok_or_else(|| anyhow!("User not found"))?;
 
         let phone = new_meet_date.phone_number.as_deref().unwrap();
         let phone_hash = encrypt::hash_value(&hmac_secret, phone);
@@ -67,7 +69,10 @@ impl UserMeetDate {
         user_uuid: Uuid,
         selected_month: String,
     ) -> Result<Vec<UserMeetDate>> {
-        let user_id = User::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid))
+            .await?
+            .ok_or_else(|| anyhow!("User not found"))?;
+
         let rows = sqlx::query!(
             "SELECT uuid, meet_date, full_name, phone_number_enc, phone_number_nonce, phone_number_hash, meet_location, meet_type, is_completed, created_by, created_at
              FROM user_dates

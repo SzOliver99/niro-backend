@@ -1,6 +1,6 @@
 use std::env;
 
-use anyhow::{Ok, Result};
+use anyhow::{anyhow, Ok, Result};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use sqlx::{FromRow, prelude::Type};
@@ -78,7 +78,7 @@ impl User {
         if user_role >= min_role {
             return Ok(());
         }
-        Err(anyhow::anyhow!("Ehez a folyamathoz nincs jogosultságod!"))
+        Err(anyhow!("Ehez a folyamathoz nincs jogosultságod!"))
     }
 
     async fn is_exists(db: &Database, user: &User) -> Result<bool> {
@@ -110,9 +110,7 @@ impl User {
 impl User {
     pub async fn create(db: &Database, new_user: User) -> Result<()> {
         if User::is_exists(db, &new_user).await? {
-            return Err(anyhow::anyhow!(
-                "Ez az e-mail cím vagy felhasználónév már létezik."
-            ));
+            return Err(anyhow!("Ez az e-mail cím vagy felhasználónév már létezik."));
         }
 
         let hashed_password = password_hashing::hash_password(&new_user.password.unwrap());
@@ -155,7 +153,7 @@ impl User {
         .await?;
 
         let Some(hashed_user) = &user_data else {
-            return Err(anyhow::anyhow!("Felhasználó nem található"));
+            return Err(anyhow!("Felhasználó nem található"));
         };
 
         if password_hashing::verify_password(&user.password.unwrap(), &hashed_user.password) {
@@ -163,13 +161,13 @@ impl User {
                 generate_jwt_token(hashed_user.id as usize, env::var("AUTH_SECRET").unwrap()).await,
             ))
         } else {
-            Err(anyhow::anyhow!("Helytelen jelszó!"))
+            Err(anyhow!("Helytelen jelszó!"))
         }
     }
 
     pub async fn get_users(db: &Database, user_id: i32) -> Result<Vec<User>> {
         if !User::is_exists_by_id(db, user_id).await? {
-            return Err(anyhow::anyhow!("Felhasználó nem létezik"));
+            return Err(anyhow!("Felhasználó nem létezik"));
         }
 
         let rows = sqlx::query!(
@@ -219,7 +217,7 @@ impl User {
     pub async fn get_users_by_id(db: &Database, user_uuid: Uuid) -> Result<Vec<User>> {
         let user_id = Self::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
         if !User::is_exists_by_id(db, user_id).await? {
-            return Err(anyhow::anyhow!("Felhasználó nem létezik"));
+            return Err(anyhow!("Felhasználó nem létezik"));
         }
 
         let rows = sqlx::query!(
@@ -270,7 +268,7 @@ impl User {
 
     pub async fn get_info_by_id(db: &Database, user_id: i32) -> Result<User> {
         if !User::is_exists_by_id(db, user_id).await? {
-            return Err(anyhow::anyhow!("Felhasználó nem létezik"));
+            return Err(anyhow!("Felhasználó nem létezik"));
         }
 
         let row = sqlx::query!(
@@ -305,7 +303,7 @@ impl User {
     pub async fn modify_info(db: &Database, user_uuid: Uuid, user: User) -> Result<()> {
         let user_id = Self::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
         if !User::is_exists_by_id(db, user_id).await? {
-            return Err(anyhow::anyhow!("Invalid user_id"));
+            return Err(anyhow!("Invalid user_id"));
         }
 
         let mut tx = db.pool.begin().await?;
@@ -339,7 +337,7 @@ impl User {
     pub async fn modify_manager(db: &Database, user_uuid: Uuid, user: User) -> Result<()> {
         let user_id = Self::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
         if !User::is_exists_by_id(db, user_id).await? {
-            return Err(anyhow::anyhow!("Invalid user_id"));
+            return Err(anyhow!("Invalid user_id"));
         }
 
         let manager_id = Self::get_id_by_uuid(db, user.manager_uuid).await?;
@@ -370,7 +368,7 @@ impl User {
     pub async fn delete(db: &Database, user_uuid: Uuid) -> Result<()> {
         let user_id = Self::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
         if !User::is_exists_by_id(db, user_id).await? {
-            return Err(anyhow::anyhow!("Invalid user_id"));
+            return Err(anyhow!("Invalid user_id"));
         }
 
         sqlx::query!(
@@ -391,7 +389,7 @@ impl User {
     //     offset: i64,
     // ) -> Result<Vec<LeadDto>> {
     //     if !User::is_exists_by_id(db, user_id).await? {
-    //         return Err(anyhow::anyhow!("Invalid user_id"));
+    //         return Err(anyhow!("Invalid user_id"));
     //     }
 
     //     let rows = sqlx::query!(
