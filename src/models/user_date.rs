@@ -69,9 +69,9 @@ impl UserMeetDate {
     ) -> Result<Vec<UserMeetDate>> {
         let user_id = User::get_id_by_uuid(db, Some(user_uuid)).await?.unwrap();
         let rows = sqlx::query!(
-            "SELECT uuid, meet_date, full_name, phone_number_enc, phone_number_nonce, phone_number_hash, meet_location, meet_type, is_completed, created_by, created_at, TO_CHAR(meet_date, 'Month') as month_name
+            "SELECT uuid, meet_date, full_name, phone_number_enc, phone_number_nonce, phone_number_hash, meet_location, meet_type, is_completed, created_by, created_at
              FROM user_dates
-             WHERE user_id = $1 AND TO_CHAR(meet_date, 'Month') = $2
+             WHERE user_id = $1 AND TRIM(TO_CHAR(meet_date, 'Month')) = $2
              ORDER BY meet_date DESC",
             user_id,
             selected_month

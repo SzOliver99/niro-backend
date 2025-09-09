@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT uuid, meet_date, full_name, phone_number_enc, phone_number_nonce, phone_number_hash, meet_location, meet_type, is_completed, created_by, created_at, TO_CHAR(meet_date, 'Month') as month_name\n             FROM user_dates\n             WHERE user_id = $1 AND TO_CHAR(meet_date, 'Month') = $2\n             ORDER BY meet_date DESC",
+  "query": "SELECT uuid, meet_date, full_name, phone_number_enc, phone_number_nonce, phone_number_hash, meet_location, meet_type, is_completed, created_by, created_at\n             FROM user_dates\n             WHERE user_id = $1 AND TRIM(TO_CHAR(meet_date, 'Month')) = $2\n             ORDER BY meet_date DESC",
   "describe": {
     "columns": [
       {
@@ -57,11 +57,6 @@
         "ordinal": 10,
         "name": "created_at",
         "type_info": "Timestamptz"
-      },
-      {
-        "ordinal": 11,
-        "name": "month_name",
-        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -81,9 +76,8 @@
       false,
       false,
       false,
-      false,
-      null
+      false
     ]
   },
-  "hash": "335a11b8f390616932e1866284a09b1f4a70af79638bc9713bdc6cae4e07c5bc"
+  "hash": "faa953851c6d3c8ff1805bf4b430d9889566f3c24b5c1a5821183f30bf470295"
 }
