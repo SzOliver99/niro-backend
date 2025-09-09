@@ -70,12 +70,24 @@ async fn create_date(
     }
 }
 
+#[derive(Deserialize)]
+struct GetAllDatesByUuid {
+    user_uuid: Uuid,
+    selected_month: String,
+}
 async fn get_all_dates(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
-    data: web::Json<Uuid>,
+    data: web::Json<GetAllDatesByUuid>,
 ) -> impl Responder {
-    match UserMeetDate::get_all(&web_data.db, &web_data.key, data.0).await {
+    match UserMeetDate::get_all(
+        &web_data.db,
+        &web_data.key,
+        data.user_uuid,
+        data.selected_month.clone(),
+    )
+    .await
+    {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }
