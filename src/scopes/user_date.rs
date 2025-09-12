@@ -5,8 +5,10 @@ use uuid::Uuid;
 
 use crate::{
     extractors::authentication_token::AuthenticationToken,
-    models::user::{User, UserRole},
-    models::user_date::UserMeetDate,
+    models::{
+        user::{User, UserRole},
+        user_date::{MeetType, UserMeetDate},
+    },
     utils::error::ApiError,
     web_data::WebData,
 };
@@ -14,7 +16,9 @@ use crate::{
 pub fn dates_scope() -> Scope {
     web::scope("/dates")
         .route("/create", web::post().to(create_date))
+        .route("/modify", web::put().to(modify_date))
         .route("/get-all", web::post().to(get_all_dates))
+        .route("/get/uuid", web::post().to(get_date_by_uuid))
         .route("/change/user", web::post().to(change_dates_handler))
         .route("/change/state", web::post().to(change_date_state))
         .route("/delete", web::delete().to(delete_dates))
@@ -26,11 +30,10 @@ struct CreateDateJson {
     full_name: String,
     phone_number: String,
     meet_location: String,
-    meet_type: String,
+    meet_type: MeetType,
     created_by: String,
     user_uuid: Uuid,
 }
-
 async fn create_date(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
@@ -71,6 +74,54 @@ async fn create_date(
     }
 }
 
+#[derive(Deserialize, Clone)]
+struct ModifyDateJson {
+    date_uuid: Uuid,
+    meet_date: String,
+    full_name: String,
+    phone_number: String,
+    meet_location: String,
+    meet_type: MeetType,
+}
+
+async fn modify_date(
+    web_data: web::Data<WebData>,
+    _: AuthenticationToken,
+    data: web::Json<ModifyDateJson>,
+) -> impl Responder {
+    let parsed_date = chrono::NaiveDateTime::parse_from_str(&data.meet_date, "%Y-%m-%dT%H:%M")
+        .or_else(|_| {
+            chrono::DateTime::parse_from_rfc3339(&data.meet_date).map(|dt| dt.naive_utc())
+        });
+
+    let meet_date = match parsed_date {
+        Ok(d) => d,
+        Err(e) => return ApiError::from(anyhow!(e)).error_response(),
+    };
+
+    let user_date = UserMeetDate {
+        meet_date: Some(meet_date),
+        full_name: Some(data.full_name.clone()),
+        phone_number: Some(data.phone_number.clone()),
+        meet_location: Some(data.meet_location.clone()),
+        meet_type: Some(data.meet_type.clone()),
+        ..Default::default()
+    };
+
+    match UserMeetDate::modify(
+        &web_data.db,
+        &web_data.key,
+        &web_data.hmac_secret,
+        data.date_uuid,
+        user_date,
+    )
+    .await
+    {
+        Ok(_) => HttpResponse::Created().json("Időpont sikeresen módosítva!"),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
 #[derive(Deserialize)]
 struct GetAllDatesByUuid {
     user_uuid: Uuid,
@@ -89,6 +140,17 @@ async fn get_all_dates(
     )
     .await
     {
+        Ok(list) => HttpResponse::Ok().json(list),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_date_by_uuid(
+    web_data: web::Data<WebData>,
+    _: AuthenticationToken,
+    data: web::Json<Uuid>,
+) -> impl Responder {
+    match UserMeetDate::get_by_uuid(&web_data.db, &web_data.key, data.0).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -132,7 +194,7 @@ async fn change_date_state(
     data: web::Json<ChangeUserDateStateJson>,
 ) -> impl Responder {
     match UserMeetDate::change_date_state(&web_data.db, data.date_uuid, data.value).await {
-        Ok(_) => HttpResponse::Ok().json("Időpont(ok) státusza megváltoztatva!"),
+        Ok(_) => HttpResponse::Ok().json("Időpont státusza megváltoztatva!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }

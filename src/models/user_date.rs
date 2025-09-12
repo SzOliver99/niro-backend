@@ -1,8 +1,10 @@
 use anyhow::{Ok, Result, anyhow};
 use chacha20poly1305::Key;
 use chrono::{DateTime, NaiveDateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use sqlx::prelude::Type;
+use strum::{AsRefStr, Display, EnumString};
 use uuid::Uuid;
 
 use crate::{
@@ -20,11 +22,19 @@ pub struct UserMeetDate {
     pub full_name: Option<String>,
     pub phone_number: Option<String>,
     pub meet_location: Option<String>,
-    pub meet_type: Option<String>,
+    pub meet_type: Option<MeetType>,
     pub is_completed: Option<bool>,
     pub created_by: Option<String>,
     pub created_at: Option<DateTime<Utc>>,
     pub user_id: Option<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, EnumString, Display, Type, AsRefStr)]
+pub enum MeetType {
+    NeedsAssessment,
+    Consultation,
+    Service,
+    AnnualReview,
 }
 
 impl UserMeetDate {
@@ -53,7 +63,7 @@ impl UserMeetDate {
             phone_nonce,
             phone_hash,
             new_meet_date.meet_location,
-            new_meet_date.meet_type,
+            new_meet_date.meet_type.map(|t| t.to_string()),
             new_meet_date.created_by,
             user_id
         )
@@ -61,6 +71,45 @@ impl UserMeetDate {
         .await?;
 
         Ok(row.id)
+    }
+
+    pub async fn modify(
+        db: &Database,
+        key: &Key,
+        hmac_secret: &HmacSecret,
+        date_uuid: Uuid,
+        updated_user_date: UserMeetDate,
+    ) -> Result<()> {
+        let phone = updated_user_date
+            .phone_number
+            .as_deref()
+            .unwrap_or_default();
+        let phone_hash = encrypt::hash_value(hmac_secret, phone);
+        let (phone_enc, phone_nonce) = encrypt::encrypt_value(key, phone);
+
+        sqlx::query!(
+            "UPDATE user_dates
+             SET meet_date = $1,
+                 full_name = $2,
+                 phone_number_enc = $3,
+                 phone_number_nonce = $4,
+                 phone_number_hash = $5,
+                 meet_location = $6,
+                 meet_type = $7
+             WHERE uuid = $8",
+            updated_user_date.meet_date,
+            updated_user_date.full_name,
+            phone_enc,
+            phone_nonce,
+            phone_hash,
+            updated_user_date.meet_location,
+            updated_user_date.meet_type.map(|t| t.to_string()),
+            date_uuid
+        )
+        .execute(&db.pool)
+        .await?;
+
+        Ok(())
     }
 
     pub async fn get_all(
@@ -96,13 +145,54 @@ impl UserMeetDate {
                     &row.phone_number_nonce,
                 ),
                 meet_location: Some(row.meet_location),
-                meet_type: Some(row.meet_type),
+                meet_type: Some(row.meet_type.parse().unwrap()),
                 is_completed: Some(row.is_completed),
                 created_by: Some(row.created_by),
                 created_at: Some(row.created_at),
                 ..Default::default()
             })
             .collect())
+    }
+
+    pub async fn get_by_uuid(db: &Database, key: &Key, date_uuid: Uuid) -> Result<UserMeetDate> {
+        let row = sqlx::query!(
+            "SELECT
+                uuid,
+                meet_date,
+                full_name,
+                phone_number_enc,
+                phone_number_nonce,
+                phone_number_hash,
+                meet_location,
+                meet_type,
+                is_completed,
+                created_by,
+                created_at
+            FROM
+                user_dates
+            WHERE
+	            uuid = $1",
+            date_uuid
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(UserMeetDate {
+            uuid: row.uuid,
+            meet_date: Some(row.meet_date),
+            full_name: Some(row.full_name),
+            phone_number: encrypt::decrypt_value(
+                key,
+                &row.phone_number_enc,
+                &row.phone_number_nonce,
+            ),
+            meet_location: Some(row.meet_location),
+            meet_type: Some(row.meet_type.parse().unwrap()),
+            is_completed: Some(row.is_completed),
+            created_by: Some(row.created_by),
+            created_at: Some(row.created_at),
+            ..Default::default()
+        })
     }
 
     pub async fn change_handler(

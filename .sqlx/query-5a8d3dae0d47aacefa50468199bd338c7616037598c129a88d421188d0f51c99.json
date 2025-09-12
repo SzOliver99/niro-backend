@@ -1,0 +1,82 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                uuid,\n                meet_date,\n                full_name,\n                phone_number_enc,\n                phone_number_nonce,\n                phone_number_hash,\n                meet_location,\n                meet_type,\n                is_completed,\n                created_by,\n                created_at\n            FROM\n                user_dates\n            WHERE\n\t            uuid = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "meet_date",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 2,
+        "name": "full_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "phone_number_enc",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 4,
+        "name": "phone_number_nonce",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 5,
+        "name": "phone_number_hash",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 6,
+        "name": "meet_location",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "meet_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "is_completed",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_by",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5a8d3dae0d47aacefa50468199bd338c7616037598c129a88d421188d0f51c99"
+}

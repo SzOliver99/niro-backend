@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE user_dates\n             SET meet_date = $1,\n                 full_name = $2,\n                 phone_number_enc = $3,\n                 phone_number_nonce = $4,\n                 phone_number_hash = $5,\n                 meet_location = $6,\n                 meet_type = $7\n             WHERE uuid = $8",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamp",
+        "Varchar",
+        "Bytea",
+        "Bytea",
+        "Bytea",
+        "Varchar",
+        "Varchar",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0591aedd98a2724f5d2fb68bb0299762c073e7ccbdac7bc00030d0ddd6775b82"
+}
