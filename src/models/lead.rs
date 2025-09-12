@@ -20,11 +20,20 @@ use crate::{
 pub struct Lead {
     pub id: Option<i32>,
     pub uuid: Option<Uuid>,
-    pub lead_type: Option<String>,
+    pub lead_type: Option<LeadType>,
     pub inquiry_type: Option<String>,
     pub lead_status: Option<LeadStatus>,
     pub handle_at: Option<DateTime<Utc>>,
     pub created_by: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Type, Clone, AsRefStr, EnumString, Display)]
+pub enum LeadType {
+    Personal,
+    Recommendation,
+    Salesforce,
+    RedLead,
+    BlueLead,
 }
 
 #[derive(Debug, Serialize, Deserialize, Type, Clone, AsRefStr, EnumString, Display)]
@@ -92,7 +101,7 @@ impl Lead {
             "INSERT INTO customer_leads(lead_type, inquiry_type, lead_status, customer_id, user_id, created_by)
              VALUES($1,$2, $3, $4, $5, $6)
              RETURNING id",
-            lead.lead_type,
+            lead.lead_type.map(|t| t.to_string()),
             lead.inquiry_type,
             lead.lead_status.map(|l| l.to_string()),
             customer_id,
@@ -113,7 +122,7 @@ impl Lead {
                  lead_status = $3,
                  handle_at = NOW()
              WHERE uuid = $4",
-            updated_lead.lead_type,
+            updated_lead.lead_type.map(|t| t.to_string()),
             updated_lead.inquiry_type,
             updated_lead.lead_status.map(|s| s.to_string()),
             lead_uuid
@@ -194,7 +203,7 @@ impl Lead {
             .into_iter()
             .map(|row| Lead {
                 uuid: row.uuid,
-                lead_type: Some(row.lead_type),
+                lead_type: Some(row.lead_type.parse().unwrap()),
                 inquiry_type: Some(row.inquiry_type),
                 lead_status: LeadStatus::from_str(&row.lead_status).ok(),
                 handle_at: Some(row.handle_at),
@@ -226,7 +235,7 @@ impl Lead {
 
         Ok(Lead {
             uuid: row.uuid,
-            lead_type: Some(row.lead_type),
+            lead_type: Some(row.lead_type.parse().unwrap()),
             inquiry_type: Some(row.inquiry_type),
             lead_status: LeadStatus::from_str(&row.lead_status).ok(),
             handle_at: Some(row.handle_at),

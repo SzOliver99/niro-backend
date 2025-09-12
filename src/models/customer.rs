@@ -19,6 +19,7 @@ pub struct Customer {
     pub phone_number: Option<String>,
     pub email: Option<String>,
     pub address: Option<String>,
+    pub comment: Option<String>,
     pub user_id: Option<i32>,
     pub created_by: Option<String>,
 }
@@ -166,9 +167,23 @@ impl Customer {
         Ok(())
     }
 
+    pub async fn save_comment(db: &Database, customer_uuid: Uuid, comment: String) -> Result<()> {
+        sqlx::query!(
+            "UPDATE customers
+             SET comment = $1
+             WHERE uuid = $2",
+            comment,
+            customer_uuid
+        )
+        .execute(&db.pool)
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn get_by_uuid(db: &Database, key: &Key, customer_uuid: Uuid) -> Result<Self> {
         let row = sqlx::query!(
-            "SELECT uuid, full_name, phone_number_enc, phone_number_nonce, email_enc, email_nonce, address_enc, address_nonce, user_id 
+            "SELECT uuid, full_name, phone_number_enc, phone_number_nonce, email_enc, email_nonce, address_enc, address_nonce, comment, user_id
              FROM customers
              WHERE uuid = $1",
              customer_uuid
@@ -185,6 +200,7 @@ impl Customer {
             ),
             email: encrypt::decrypt_value(key, &row.email_enc, &row.email_nonce),
             address: encrypt::decrypt_value(key, &row.address_enc, &row.address_nonce),
+            comment: row.comment,
             user_id: row.user_id,
             ..Default::default()
         })

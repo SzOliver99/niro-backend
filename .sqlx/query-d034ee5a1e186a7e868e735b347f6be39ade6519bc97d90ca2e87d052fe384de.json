@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT uuid, full_name, phone_number_enc, phone_number_nonce, email_enc, email_nonce, address_enc, address_nonce, user_id \n             FROM customers\n             WHERE uuid = $1",
+  "query": "SELECT uuid, full_name, phone_number_enc, phone_number_nonce, email_enc, email_nonce, address_enc, address_nonce, comment, user_id\n             FROM customers\n             WHERE uuid = $1",
   "describe": {
     "columns": [
       {
@@ -45,6 +45,11 @@
       },
       {
         "ordinal": 8,
+        "name": "comment",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
         "name": "user_id",
         "type_info": "Int4"
       }
@@ -63,8 +68,9 @@
       false,
       false,
       false,
+      true,
       true
     ]
   },
-  "hash": "9b080adaabb564b2bd1f394a02fa6883bfbe05edb78802bf2f58f2852ff711e0"
+  "hash": "d034ee5a1e186a7e868e735b347f6be39ade6519bc97d90ca2e87d052fe384de"
 }

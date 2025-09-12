@@ -4,10 +4,10 @@ use uuid::Uuid;
 
 use crate::{
     extractors::authentication_token::AuthenticationToken,
-    models::user::{User, UserRole},
     models::{
         customer::Customer,
-        lead::{Lead, LeadStatus},
+        lead::{Lead, LeadStatus, LeadType},
+        user::{User, UserRole},
     },
     utils::error::ApiError,
     web_data::WebData,
@@ -34,7 +34,7 @@ struct CustomerJson {
 #[derive(Deserialize, Clone)]
 struct CreateLeadJson {
     customer: CustomerJson,
-    lead_type: String,
+    lead_type: LeadType,
     inquiry_type: String,
     lead_status: LeadStatus,
     user_uuid: Uuid,
@@ -78,7 +78,7 @@ async fn create_lead(
 #[derive(Deserialize, Clone)]
 struct ModifyLeadJson {
     lead_uuid: Uuid,
-    lead_type: String,
+    lead_type: LeadType,
     inquiry_type: String,
     lead_status: LeadStatus,
 }

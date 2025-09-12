@@ -18,6 +18,7 @@ pub fn customer_scope() -> Scope {
     web::scope("/customer")
         .route("/create", web::post().to(create_customer))
         .route("/modify", web::put().to(modify_customer))
+        .route("/comment/save", web::put().to(save_comment_customer))
         .route("/leads", web::post().to(get_leads_by_customer_uuid))
         .route("/contracts", web::post().to(get_contracts_by_customer_uuid))
         .route("/get-all", web::post().to(get_customers_by_uuid))
@@ -92,6 +93,21 @@ async fn modify_customer(
     .await
     {
         Ok(_) => HttpResponse::Created().json("Sikeresen módosítottad az ügyfelet!"),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+#[derive(Deserialize, Clone)]
+struct SaveCustomerCommentJson {
+    customer_uuid: Uuid,
+    comment: String,
+}
+async fn save_comment_customer(
+    web_data: web::Data<WebData>,
+    data: web::Json<SaveCustomerCommentJson>,
+) -> impl Responder {
+    match Customer::save_comment(&web_data.db, data.customer_uuid, data.comment.clone()).await {
+        Ok(_) => HttpResponse::Created().json("Sikeresen elmentetted az ügyfél megjegyzését!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
