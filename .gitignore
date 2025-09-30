@@ -1,2 +1,7 @@
 /target
 .env
+.idea/inspectionProfiles/Project_Default.xml
+.idea/dataSources.xml
+.idea/modules.xml
+.idea/niro-backend.iml
+.idea/vcs.xml
