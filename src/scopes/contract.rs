@@ -157,7 +157,7 @@ async fn change_first_payment_state(
     data: web::Json<bool>,
 ) -> impl Responder {
     match Contract::change_first_payment_state(&web_data.db, contract_uuid.into_inner(), data.0).await {
-        Ok(_) => HttpResponse::Ok().json("Szerződés első fizetés módosítva!"),
+        Ok(_) => HttpResponse::Ok().json("Szerződés első díj befizetés módosítva!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
