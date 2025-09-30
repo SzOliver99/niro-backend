@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.full_name, c.phone_number_enc, c.phone_number_nonce, c.email_enc, c.email_nonce, c.address_enc, c.address_nonce, it.uuid, it.contract_number, it.product_name, it.outstanding_days, it.balance, it.processing_deadline, it.comment, it.status, it.created_by\n             FROM customers c\n             JOIN customer_intervention_tasks it ON it.customer_id = c.id\n             WHERE it.user_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "full_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "phone_number_enc",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 2,
+        "name": "phone_number_nonce",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 3,
+        "name": "email_enc",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 4,
+        "name": "email_nonce",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 5,
+        "name": "address_enc",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 6,
+        "name": "address_nonce",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 7,
+        "name": "uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "contract_number",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "product_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "outstanding_days",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "balance",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 12,
+        "name": "processing_deadline",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 13,
+        "name": "comment",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 15,
+        "name": "created_by",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "faf38ed5ec7dffd3c4fd138cb7a99f5080ac849559003d09eb3bb9d2ce40d47a"
+}

@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                uuid,\n                contract_number,\n                product_name,\n                outstanding_days,\n                balance,\n                processing_deadline,\n                comment,\n                status,\n                created_by\n            FROM\n                customer_intervention_tasks\n            WHERE\n\t            customer_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "contract_number",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "product_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "outstanding_days",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "balance",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "processing_deadline",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 6,
+        "name": "comment",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_by",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "a60b973f381d3be4de9f47ad5ca12c2e23947602a884e837d77cb145ed6639bb"
+}

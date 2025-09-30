@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO customer_intervention_tasks(contract_number, product_name, outstanding_days, balance, processing_deadline, comment, status, customer_id, user_id, created_by)\n             VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)\n             RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Int4",
+        "Int4",
+        "Timestamp",
+        "Text",
+        "Varchar",
+        "Int4",
+        "Int4",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e2e676dc03b2e6b49f60750677884ca5b28dc4fa5ed17a4bc32d8870267f282b"
+}

@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE customer_intervention_tasks\n             SET contract_number = $1,\n                 product_name = $2,\n                 outstanding_days = $3,\n                 balance = $4,\n                 processing_deadline = $5,\n                 comment = $6,\n                 status = $7\n             WHERE uuid = $8",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Int4",
+        "Int4",
+        "Timestamp",
+        "Text",
+        "Varchar",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "49722a932768e0749f9362d745b641b03ad5766bfd30a23405f499a67b8f4c4a"
+}
