@@ -18,13 +18,13 @@ pub fn user_scope() -> Scope {
         .route("/login/username", web::post().to(sign_in_via_username))
         .route("/role", web::get().to(get_user_role))
         .route("/get-all", web::get().to(get_users))
-        .route("/get", web::post().to(get_users_by_uuid))
-        .route("/sub-users", web::post().to(get_user_sub_users))
+        .route("/get/{user_uuid}", web::get().to(get_users_by_uuid))
+        .route("/sub-users/{min_role}", web::get().to(get_user_sub_users))
+        .route("/managers", web::post().to(get_managers))
         .route("/manager", web::put().to(modify_user_manager))
-        .route("/delete", web::delete().to(delete_user))
         .route("/info", web::get().to(get_user_informations_by_id))
         .route("/info", web::put().to(modify_user_info))
-        .route("/managers/get-all", web::post().to(get_managers))
+        .route("/delete/{user_uuid}", web::delete().to(delete_user))
         .route("/protected", web::get().to(protected_route))
 }
 
@@ -105,14 +105,14 @@ async fn get_users(
 async fn get_users_by_uuid(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
-    data: web::Json<Uuid>,
+    user_uuid: web::Path<Uuid>,
 ) -> impl Responder {
     if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
     {
         return ApiError::from(e).error_response();
     }
 
-    match User::get_users_by_id(&web_data.db, data.0).await {
+    match User::get_users_by_id(&web_data.db, user_uuid.into_inner()).await {
         Ok(users) => HttpResponse::Ok().json(users),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -120,7 +120,6 @@ async fn get_users_by_uuid(
 
 #[derive(Deserialize, Clone, Debug)]
 struct ModifyUserInfoJson {
-    user_uuid: Uuid,
     email: String,
     info: UserInfo,
 }
@@ -128,6 +127,7 @@ async fn modify_user_info(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
     data: web::Json<ModifyUserInfoJson>,
+    user_uuid: web::Path<Uuid>,
 ) -> impl Responder {
     if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
     {
@@ -140,8 +140,8 @@ async fn modify_user_info(
         ..Default::default()
     };
 
-    match User::modify_info(&web_data.db, data.user_uuid, user).await {
-        Ok(_) => HttpResponse::Ok().json({}),
+    match User::modify_info(&web_data.db, user_uuid.into_inner(), user).await {
+        Ok(_) => HttpResponse::Ok().json("Sikeresen megváltoztattad a felhasználó adatait!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
@@ -166,7 +166,7 @@ async fn modify_user_manager(
     };
 
     match User::modify_manager(&web_data.db, data.user_uuid, user).await {
-        Ok(_) => HttpResponse::Ok().json({}),
+        Ok(_) => HttpResponse::Ok().json("Sikeresen megváltoztattad a felhasználó adatait!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
@@ -174,14 +174,14 @@ async fn modify_user_manager(
 async fn delete_user(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
-    data: web::Json<Uuid>,
+    user_uuid: web::Json<Uuid>,
 ) -> impl Responder {
     if let Err(e) = User::require_role(&web_data.db, UserRole::Leader, auth_token.id as i32).await {
         return ApiError::from(e).error_response();
     }
 
-    match User::delete(&web_data.db, data.0).await {
-        Ok(_) => HttpResponse::Ok().json({}),
+    match User::delete(&web_data.db, user_uuid.into_inner()).await {
+        Ok(_) => HttpResponse::Ok().json("Sikeresen kitörölted a felhasználót!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
@@ -228,9 +228,9 @@ async fn get_managers(
 async fn get_user_sub_users(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
-    data: web::Json<String>,
+    min_role: web::Path<String>,
 ) -> impl Responder {
-    match User::get_sub_users(&web_data.db, auth_token.id as i32, data.0).await {
+    match User::get_sub_users(&web_data.db, auth_token.id as i32, min_role.to_string()).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }

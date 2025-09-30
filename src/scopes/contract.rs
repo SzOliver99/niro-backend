@@ -17,10 +17,16 @@ pub fn contract_scope() -> Scope {
     web::scope("/contract")
         .route("/create", web::post().to(create_contract))
         .route("/modify", web::put().to(modify_contract))
-        .route("/get-all", web::post().to(get_contracts_by_user_uuid))
-        .route("/get/uuid", web::post().to(get_contract_by_uuid))
-        .route("/customer/uuid", web::post().to(get_customer_uuid))
-        .route("/change/user", web::post().to(change_contract_handler))
+        .route(
+            "/get-all/{user_uuid}",
+            web::get().to(get_contracts_by_user_uuid),
+        )
+        .route("/{contract_uuid}", web::get().to(get_contract_by_uuid))
+        .route(
+            "/{contract_uuid}/customer",
+            web::get().to(get_customer_uuid),
+        )
+        .route("/change/user", web::put().to(change_contract_handler))
         .route("/delete", web::delete().to(delete_contract))
 }
 
@@ -112,9 +118,9 @@ async fn modify_contract(
 async fn get_contracts_by_user_uuid(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
-    data: web::Json<Uuid>,
+    user_uuid: web::Path<Uuid>,
 ) -> impl Responder {
-    match Contract::get_all(&web_data.db, &web_data.key, data.0).await {
+    match Contract::get_all(&web_data.db, &web_data.key, user_uuid.into_inner()).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -123,9 +129,9 @@ async fn get_contracts_by_user_uuid(
 async fn get_contract_by_uuid(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
-    data: web::Json<Uuid>,
+    contract_uuid: web::Path<Uuid>,
 ) -> impl Responder {
-    match Contract::get_by_uuid(&web_data.db, data.0).await {
+    match Contract::get_by_uuid(&web_data.db, contract_uuid.into_inner()).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -134,9 +140,9 @@ async fn get_contract_by_uuid(
 async fn get_customer_uuid(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
-    data: web::Json<Uuid>,
+    contract_uuid: web::Path<Uuid>,
 ) -> impl Responder {
-    match Contract::get_customer_uuid(&web_data.db, data.0).await {
+    match Contract::get_customer_uuid(&web_data.db, contract_uuid.into_inner()).await {
         Ok(customer_uuid) => HttpResponse::Ok().json(customer_uuid),
         Err(e) => ApiError::from(e).error_response(),
     }

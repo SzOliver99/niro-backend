@@ -2,6 +2,7 @@ use actix_web::{HttpResponse, Responder, ResponseError, Scope, web};
 use serde::Deserialize;
 use uuid::Uuid;
 
+use crate::models::intervention_task::InterventionTask;
 use crate::{
     extractors::authentication_token::AuthenticationToken,
     models::{
@@ -18,12 +19,25 @@ pub fn customer_scope() -> Scope {
     web::scope("/customer")
         .route("/create", web::post().to(create_customer))
         .route("/modify", web::put().to(modify_customer))
-        .route("/comment/save", web::put().to(save_comment_customer))
-        .route("/leads", web::post().to(get_leads_by_customer_uuid))
-        .route("/contracts", web::post().to(get_contracts_by_customer_uuid))
-        .route("/get-all", web::post().to(get_customers_by_uuid))
-        .route("/get", web::post().to(get_customer_by_uuid))
-        .route("/change/user", web::post().to(change_customer_handler))
+        .route(
+            "/comment/save/{customer_uuid}",
+            web::put().to(save_comment_customer),
+        )
+        .route(
+            "/leads/{customer_uuid}",
+            web::get().to(get_leads_by_customer_uuid),
+        )
+        .route(
+            "/contracts/{customer_uuid}",
+            web::get().to(get_contracts_by_customer_uuid),
+        )
+        .route(
+            "/intervention-tasks/{customer_uuid}",
+            web::get().to(get_intervention_tasks),
+        )
+        .route("/get-all/{user_uuid}", web::get().to(get_customers_by_uuid))
+        .route("/get/{customer_uuid}", web::get().to(get_customer_by_uuid))
+        .route("/change/user", web::put().to(change_customer_handler))
         .route("/delete", web::delete().to(delete_customer))
 }
 
@@ -97,16 +111,12 @@ async fn modify_customer(
     }
 }
 
-#[derive(Deserialize, Clone)]
-struct SaveCustomerCommentJson {
-    customer_uuid: Uuid,
-    comment: String,
-}
 async fn save_comment_customer(
     web_data: web::Data<WebData>,
-    data: web::Json<SaveCustomerCommentJson>,
+    data: web::Json<String>,
+    customer_uuid: web::Path<Uuid>,
 ) -> impl Responder {
-    match Customer::save_comment(&web_data.db, data.customer_uuid, data.comment.clone()).await {
+    match Customer::save_comment(&web_data.db, customer_uuid.into_inner(), data.clone()).await {
         Ok(_) => HttpResponse::Created().json("Sikeresen elmentetted az ügyfél megjegyzését!"),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -115,9 +125,9 @@ async fn save_comment_customer(
 async fn get_customers_by_uuid(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
-    data: web::Json<Uuid>,
+    user_uuid: web::Path<Uuid>,
 ) -> impl Responder {
-    match Customer::get_all(&web_data.db, &web_data.key, data.0).await {
+    match Customer::get_all(&web_data.db, &web_data.key, user_uuid.into_inner()).await {
         Ok(customers) => HttpResponse::Created().json(customers),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -126,9 +136,9 @@ async fn get_customers_by_uuid(
 async fn get_leads_by_customer_uuid(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
-    data: web::Json<Uuid>,
+    customer_uuid: web::Path<Uuid>,
 ) -> impl Responder {
-    match Lead::get_by_customer_uuid(&web_data.db, data.0).await {
+    match Lead::get_by_customer_uuid(&web_data.db, customer_uuid.into_inner()).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -137,9 +147,20 @@ async fn get_leads_by_customer_uuid(
 async fn get_contracts_by_customer_uuid(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
-    data: web::Json<Uuid>,
+    customer_uuid: web::Path<Uuid>,
 ) -> impl Responder {
-    match Contract::get_by_customer_uuid(&web_data.db, data.0).await {
+    match Contract::get_by_customer_uuid(&web_data.db, customer_uuid.into_inner()).await {
+        Ok(list) => HttpResponse::Ok().json(list),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_intervention_tasks(
+    web_data: web::Data<WebData>,
+    _: AuthenticationToken,
+    customer_uuid: web::Path<Uuid>,
+) -> impl Responder {
+    match InterventionTask::get_by_customer_uuid(&web_data.db, customer_uuid.into_inner()).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -148,9 +169,9 @@ async fn get_contracts_by_customer_uuid(
 async fn get_customer_by_uuid(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
-    data: web::Json<Uuid>,
+    customer_uuid: web::Path<Uuid>,
 ) -> impl Responder {
-    match Customer::get_by_uuid(&web_data.db, &web_data.key, data.0).await {
+    match Customer::get_by_uuid(&web_data.db, &web_data.key, customer_uuid.into_inner()).await {
         Ok(customers) => HttpResponse::Created().json(customers),
         Err(e) => ApiError::from(e).error_response(),
     }

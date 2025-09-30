@@ -200,7 +200,7 @@ impl Customer {
             ),
             email: encrypt::decrypt_value(key, &row.email_enc, &row.email_nonce),
             address: encrypt::decrypt_value(key, &row.address_enc, &row.address_nonce),
-            comment: row.comment,
+            comment: Some(row.comment),
             user_id: row.user_id,
             ..Default::default()
         })

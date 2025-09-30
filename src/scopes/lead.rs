@@ -17,10 +17,13 @@ pub fn lead_scope() -> Scope {
     web::scope("/lead")
         .route("/create", web::post().to(create_lead))
         .route("/modify", web::put().to(modify_lead))
-        .route("/get-all", web::post().to(get_leads_by_user_uuid))
-        .route("/get/uuid", web::post().to(get_lead_by_uuid))
-        .route("/customer/uuid", web::post().to(get_customer_uuid))
-        .route("/change/user", web::post().to(change_lead_handler))
+        .route(
+            "/get-all/{user_uuid}",
+            web::get().to(get_leads_by_user_uuid),
+        )
+        .route("/{lead_uuid}", web::get().to(get_lead_by_uuid))
+        .route("/{lead_uuid}/customer", web::get().to(get_customer_uuid))
+        .route("/change/user", web::put().to(change_lead_handler))
         .route("/delete", web::delete().to(delete_lead))
 }
 
@@ -103,9 +106,9 @@ async fn modify_lead(
 async fn get_leads_by_user_uuid(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
-    data: web::Json<Uuid>,
+    user_uuid: web::Path<Uuid>,
 ) -> impl Responder {
-    match Lead::get_all(&web_data.db, &web_data.key, data.0).await {
+    match Lead::get_all(&web_data.db, &web_data.key, user_uuid.into_inner()).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -114,9 +117,9 @@ async fn get_leads_by_user_uuid(
 async fn get_lead_by_uuid(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
-    data: web::Json<Uuid>,
+    lead_uuid: web::Path<Uuid>,
 ) -> impl Responder {
-    match Lead::get_by_uuid(&web_data.db, data.0).await {
+    match Lead::get_by_uuid(&web_data.db, lead_uuid.into_inner()).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -125,9 +128,9 @@ async fn get_lead_by_uuid(
 async fn get_customer_uuid(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
-    data: web::Json<Uuid>,
+    lead_uuid: web::Path<Uuid>,
 ) -> impl Responder {
-    match Lead::get_customer_uuid(&web_data.db, data.0).await {
+    match Lead::get_customer_uuid(&web_data.db, lead_uuid.into_inner()).await {
         Ok(customer_uuid) => HttpResponse::Ok().json(customer_uuid),
         Err(e) => ApiError::from(e).error_response(),
     }

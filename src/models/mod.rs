@@ -5,3 +5,4 @@ pub mod lead;
 pub mod user;
 pub mod user_date;
 pub mod user_info;
+pub mod intervention_task;

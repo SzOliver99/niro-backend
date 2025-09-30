@@ -1,8 +1,9 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::Serialize;
 use uuid::Uuid;
 
 use crate::models::contract::{ContractType, PaymentFrequency, PaymentMethod};
+use crate::models::intervention_task::InterventionTaskStatus;
 
 #[derive(Serialize)]
 pub struct ManagerNameDto {
@@ -22,6 +23,23 @@ pub struct LeadListItemDto {
     pub inquiry_type: String,
     pub lead_status: String,
     pub handle_at: DateTime<Utc>,
+    pub created_by: String,
+}
+
+#[derive(Serialize)]
+pub struct InterventionTaskDto {
+    pub uuid: Option<Uuid>,
+    pub full_name: String,
+    pub phone_number: String,
+    pub email: String,
+    pub address: String,
+    pub contract_number: String,
+    pub product_name: String,
+    pub outstanding_days: i32,
+    pub balance: i32,
+    pub processing_deadline: NaiveDateTime,
+    pub comment: Option<String>,
+    pub status: InterventionTaskStatus,
     pub created_by: String,
 }
 

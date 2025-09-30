@@ -17,10 +17,13 @@ pub fn dates_scope() -> Scope {
     web::scope("/dates")
         .route("/create", web::post().to(create_date))
         .route("/modify", web::put().to(modify_date))
-        .route("/get-all", web::post().to(get_all_dates))
-        .route("/get/uuid", web::post().to(get_date_by_uuid))
-        .route("/change/user", web::post().to(change_dates_handler))
-        .route("/change/state", web::post().to(change_date_state))
+        .route(
+            "/{user_uuid}/{selected_month}",
+            web::get().to(get_all_by_dates),
+        )
+        .route("/{date_uuid}", web::get().to(get_date_by_uuid))
+        .route("/{date_uuid}/state", web::put().to(change_date_state))
+        .route("/change/user", web::put().to(change_dates_handler))
         .route("/delete", web::delete().to(delete_dates))
 }
 
@@ -122,24 +125,12 @@ async fn modify_date(
     }
 }
 
-#[derive(Deserialize)]
-struct GetAllDatesByUuid {
-    user_uuid: Uuid,
-    selected_month: String,
-}
-async fn get_all_dates(
+async fn get_all_by_dates(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
-    data: web::Json<GetAllDatesByUuid>,
+    path: web::Path<(Uuid, String)>,
 ) -> impl Responder {
-    match UserMeetDate::get_all(
-        &web_data.db,
-        &web_data.key,
-        data.user_uuid,
-        data.selected_month.clone(),
-    )
-    .await
-    {
+    match UserMeetDate::get_all(&web_data.db, &web_data.key, path.clone().0, path.clone().1).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -148,9 +139,9 @@ async fn get_all_dates(
 async fn get_date_by_uuid(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
-    data: web::Json<Uuid>,
+    date_uuid: web::Path<Uuid>,
 ) -> impl Responder {
-    match UserMeetDate::get_by_uuid(&web_data.db, &web_data.key, data.0).await {
+    match UserMeetDate::get_by_uuid(&web_data.db, &web_data.key, date_uuid.into_inner()).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -160,6 +151,18 @@ async fn get_date_by_uuid(
 struct ChangeDatesHandlerJson {
     user_full_name: String,
     date_uuids: Vec<Uuid>,
+}
+
+async fn change_date_state(
+    web_data: web::Data<WebData>,
+    _: AuthenticationToken,
+    date_uuid: web::Path<Uuid>,
+    data: web::Json<bool>,
+) -> impl Responder {
+    match UserMeetDate::change_date_state(&web_data.db, date_uuid.into_inner(), data.0).await {
+        Ok(_) => HttpResponse::Ok().json("Időpont státusza megváltoztatva!"),
+        Err(e) => ApiError::from(e).error_response(),
+    }
 }
 
 async fn change_dates_handler(
@@ -179,22 +182,6 @@ async fn change_dates_handler(
     .await
     {
         Ok(_) => HttpResponse::Ok().json("Időpontért felelős üzletkötő megváltoztatva!"),
-        Err(e) => ApiError::from(e).error_response(),
-    }
-}
-
-#[derive(Deserialize)]
-struct ChangeUserDateStateJson {
-    date_uuid: Uuid,
-    value: bool,
-}
-async fn change_date_state(
-    web_data: web::Data<WebData>,
-    _: AuthenticationToken,
-    data: web::Json<ChangeUserDateStateJson>,
-) -> impl Responder {
-    match UserMeetDate::change_date_state(&web_data.db, data.date_uuid, data.value).await {
-        Ok(_) => HttpResponse::Ok().json("Időpont státusza megváltoztatva!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }

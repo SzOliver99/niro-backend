@@ -181,7 +181,7 @@ impl Lead {
         let customer_id = Customer::get_id_by_uuid(db, Some(customer_uuid))
             .await?
             .unwrap();
-        println!("{customer_id}");
+        
         let rows = sqlx::query!(
             "SELECT
                 uuid,
@@ -235,7 +235,7 @@ impl Lead {
 
         Ok(Lead {
             uuid: row.uuid,
-            lead_type: Some(row.lead_type.parse().unwrap()),
+            lead_type: Some(row.lead_type.parse()?),
             inquiry_type: Some(row.inquiry_type),
             lead_status: LeadStatus::from_str(&row.lead_status).ok(),
             handle_at: Some(row.handle_at),

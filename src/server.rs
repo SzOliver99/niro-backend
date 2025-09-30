@@ -54,6 +54,7 @@ impl Server {
                 .service(scopes::lead::lead_scope())
                 .service(scopes::user_date::dates_scope())
                 .service(scopes::contract::contract_scope())
+                .service(scopes::intervention_task::intervention_task_scope())
         })
         .bind(("0.0.0.0", port))?
         .run()
