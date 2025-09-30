@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS customer_contracts (
 	contract_number VARCHAR(254) UNIQUE NOT NULL,
 	contract_type VARCHAR(64) NOT NULL,
 	annual_fee INT NOT NULL,
+    first_payment BOOLEAN NOT NULL DEFAULT FALSE,
 	payment_frequency VARCHAR(32) NOT NULL,
 	payment_method VARCHAR(32) NOT NULL,
 	customer_id INT NOT NULL REFERENCES customers (id) ON DELETE CASCADE,

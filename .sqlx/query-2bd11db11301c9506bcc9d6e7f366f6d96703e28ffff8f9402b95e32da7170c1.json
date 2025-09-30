@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                c.full_name,\n                c.phone_number_enc,\n                c.phone_number_nonce,\n                c.email_enc,\n                c.email_nonce,\n                c.address_enc,\n                c.address_nonce,\n                cc.uuid,\n                cc.contract_number,\n                cc.contract_type,\n                cc.annual_fee,\n                cc.payment_frequency,\n                cc.payment_method,\n                cc.handle_at,\n                cc.created_by\n            FROM\n                customers c\n                JOIN customer_contracts cc ON cc.customer_id = c.id\n            WHERE\n                cc.user_id = $1\n            ORDER BY cc.handle_at DESC\n            ",
+  "query": "\n            SELECT\n                c.full_name,\n                c.phone_number_enc,\n                c.phone_number_nonce,\n                c.email_enc,\n                c.email_nonce,\n                c.address_enc,\n                c.address_nonce,\n                cc.uuid,\n                cc.contract_number,\n                cc.contract_type,\n                cc.annual_fee,\n                cc.first_payment,\n                cc.payment_frequency,\n                cc.payment_method,\n                cc.handle_at,\n                cc.created_by\n            FROM\n                customers c\n                JOIN customer_contracts cc ON cc.customer_id = c.id\n            WHERE\n                cc.user_id = $1\n            ORDER BY cc.handle_at DESC\n            ",
   "describe": {
     "columns": [
       {
@@ -60,21 +60,26 @@
       },
       {
         "ordinal": 11,
+        "name": "first_payment",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 12,
         "name": "payment_frequency",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "payment_method",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "handle_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "created_by",
         "type_info": "Varchar"
       }
@@ -99,8 +104,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "76ec7ddfc1c903667013a5daf5df6f28f3b5d747b329900d9bf1e2225206f1fb"
+  "hash": "2bd11db11301c9506bcc9d6e7f366f6d96703e28ffff8f9402b95e32da7170c1"
 }

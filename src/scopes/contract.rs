@@ -12,6 +12,7 @@ use crate::{
     utils::error::ApiError,
     web_data::WebData,
 };
+use crate::models::user_date::UserMeetDate;
 
 pub fn contract_scope() -> Scope {
     web::scope("/contract")
@@ -26,6 +27,7 @@ pub fn contract_scope() -> Scope {
             "/{contract_uuid}/customer",
             web::get().to(get_customer_uuid),
         )
+        .route("/{contract_uuid}/state", web::put().to(change_first_payment_state))
         .route("/change/user", web::put().to(change_contract_handler))
         .route("/delete", web::delete().to(delete_contract))
 }
@@ -144,6 +146,18 @@ async fn get_customer_uuid(
 ) -> impl Responder {
     match Contract::get_customer_uuid(&web_data.db, contract_uuid.into_inner()).await {
         Ok(customer_uuid) => HttpResponse::Ok().json(customer_uuid),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn change_first_payment_state(
+    web_data: web::Data<WebData>,
+    _: AuthenticationToken,
+    contract_uuid: web::Path<Uuid>,
+    data: web::Json<bool>,
+) -> impl Responder {
+    match Contract::change_first_payment_state(&web_data.db, contract_uuid.into_inner(), data.0).await {
+        Ok(_) => HttpResponse::Ok().json("Szerződés első fizetés módosítva!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }

@@ -53,6 +53,7 @@ pub struct ContractDto {
     pub contract_number: String,
     pub contract_type: ContractType,
     pub annual_fee: i32,
+    pub first_payment: bool,
     pub payment_frequency: PaymentFrequency,
     pub payment_method: PaymentMethod,
     pub created_by: String,

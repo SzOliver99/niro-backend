@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE customer_contracts\n             SET first_payment = $2\n             WHERE uuid = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5224ee7018645aa5835438e4b996628eedb19d79c38e5ba851113f2941ca8900"
+}

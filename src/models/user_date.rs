@@ -195,6 +195,23 @@ impl UserMeetDate {
         })
     }
 
+    pub async fn change_date_state(
+        db: &Database,
+        date_uuid: Uuid,
+        is_completed: bool,
+    ) -> Result<()> {
+        sqlx::query!(
+            "UPDATE user_dates
+             SET is_completed = $2
+             WHERE uuid = $1",
+            &date_uuid,
+            is_completed
+        )
+            .execute(&db.pool)
+            .await?;
+        Ok(())
+    }
+
     pub async fn change_handler(
         db: &Database,
         user_full_name: String,
@@ -213,23 +230,6 @@ impl UserMeetDate {
              WHERE uuid = ANY($1)",
             &date_uuids,
             user.id
-        )
-        .execute(&db.pool)
-        .await?;
-        Ok(())
-    }
-
-    pub async fn change_date_state(
-        db: &Database,
-        date_uuid: Uuid,
-        is_completed: bool,
-    ) -> Result<()> {
-        sqlx::query!(
-            "UPDATE user_dates
-             SET is_completed = $2
-             WHERE uuid = $1",
-            &date_uuid,
-            is_completed
         )
         .execute(&db.pool)
         .await?;

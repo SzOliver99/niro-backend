@@ -21,6 +21,7 @@ pub struct Contract {
     pub contract_number: Option<String>,
     pub contract_type: Option<ContractType>,
     pub annual_fee: Option<i32>,
+    pub first_payment: Option<bool>,
     pub payment_frequency: Option<PaymentFrequency>,
     pub payment_method: Option<PaymentMethod>,
     pub customer_id: Option<i32>,
@@ -204,6 +205,7 @@ impl Contract {
                 cc.contract_number,
                 cc.contract_type,
                 cc.annual_fee,
+                cc.first_payment,
                 cc.payment_frequency,
                 cc.payment_method,
                 cc.handle_at,
@@ -238,6 +240,7 @@ impl Contract {
                 contract_number: row.contract_number,
                 contract_type: row.contract_type.parse().unwrap(),
                 annual_fee: row.annual_fee,
+                first_payment: row.first_payment,
                 payment_frequency: row.payment_frequency.parse().unwrap(),
                 payment_method: row.payment_method.parse().unwrap(),
                 created_by: row.created_by,
@@ -259,6 +262,7 @@ impl Contract {
                 contract_number,
                 contract_type,
                 annual_fee,
+                first_payment,
                 payment_frequency,
                 payment_method,
                 handle_at,
@@ -279,6 +283,7 @@ impl Contract {
                 contract_number: Some(row.contract_number),
                 contract_type: Some(row.contract_type.parse().unwrap()),
                 annual_fee: Some(row.annual_fee),
+                first_payment: Some(row.first_payment),
                 payment_frequency: Some(row.payment_frequency.parse().unwrap()),
                 payment_method: Some(row.payment_method.parse().unwrap()),
                 handle_at: Some(row.handle_at),
@@ -297,6 +302,7 @@ impl Contract {
                 contract_number,
                 contract_type,
                 annual_fee,
+                first_payment,
                 payment_frequency,
                 payment_method,
                 handle_at,
@@ -315,6 +321,7 @@ impl Contract {
             contract_number: Some(row.contract_number),
             contract_type: Some(row.contract_type.parse().unwrap()),
             annual_fee: Some(row.annual_fee),
+            first_payment: Some(row.first_payment),
             payment_frequency: Some(row.payment_frequency.parse().unwrap()),
             payment_method: Some(row.payment_method.parse().unwrap()),
             handle_at: Some(row.handle_at),
@@ -338,6 +345,23 @@ impl Contract {
         .await?;
 
         Ok(customer.uuid)
+    }
+
+    pub async fn change_first_payment_state(
+        db: &Database,
+        contract_uuid: Uuid,
+        value: bool,
+    ) -> Result<()> {
+        sqlx::query!(
+            "UPDATE customer_contracts
+             SET first_payment = $2
+             WHERE uuid = $1",
+            &contract_uuid,
+            value
+        )
+            .execute(&db.pool)
+            .await?;
+        Ok(())
     }
 
     pub async fn change_handler(

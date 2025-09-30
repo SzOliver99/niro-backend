@@ -147,11 +147,6 @@ async fn get_date_by_uuid(
     }
 }
 
-#[derive(Deserialize)]
-struct ChangeDatesHandlerJson {
-    user_full_name: String,
-    date_uuids: Vec<Uuid>,
-}
 
 async fn change_date_state(
     web_data: web::Data<WebData>,
@@ -165,6 +160,11 @@ async fn change_date_state(
     }
 }
 
+#[derive(Deserialize)]
+struct ChangeDatesHandlerJson {
+    user_full_name: String,
+    date_uuids: Vec<Uuid>,
+}
 async fn change_dates_handler(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
