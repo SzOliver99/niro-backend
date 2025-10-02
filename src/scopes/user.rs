@@ -23,7 +23,7 @@ pub fn user_scope() -> Scope {
         .route("/managers", web::post().to(get_managers))
         .route("/manager", web::put().to(modify_user_manager))
         .route("/info", web::get().to(get_user_informations_by_id))
-        .route("/info", web::put().to(modify_user_info))
+        .route("/{user_uuid}/info", web::put().to(modify_user_info))
         .route("/delete/{user_uuid}", web::delete().to(delete_user))
         .route("/protected", web::get().to(protected_route))
 }
