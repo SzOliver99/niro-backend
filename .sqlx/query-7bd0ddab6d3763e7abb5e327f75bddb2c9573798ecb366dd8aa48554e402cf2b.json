@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 1) AS monday,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 2) AS tuesday,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 3) AS wednesday,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 4) AS thursday,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 5) AS friday,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 6) AS saturday,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 0) AS sunday\n            FROM user_dates\n            WHERE meet_date BETWEEN $1 AND $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "monday",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "tuesday",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "wednesday",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "thursday",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "friday",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "saturday",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "sunday",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamp",
+        "Timestamp"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "7bd0ddab6d3763e7abb5e327f75bddb2c9573798ecb366dd8aa48554e402cf2b"
+}

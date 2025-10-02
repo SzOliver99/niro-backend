@@ -1,5 +1,6 @@
 use actix_web::{HttpResponse, Responder, ResponseError, Scope, web};
 use anyhow::anyhow;
+use chrono::NaiveDateTime;
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -40,6 +41,22 @@ pub fn dates_scope() -> Scope {
         .route(
             "/chart/meet-type/{user_uuid}",
             web::get().to(get_meet_type_chart_by_user_uuid),
+        )
+        .route(
+            "/chart/weekly/get-all",
+            web::post().to(get_dates_weekly_chart),
+        )
+        .route(
+            "/chart/weekly/{user_uuid}",
+            web::post().to(get_dates_weekly_chart_by_user_uuid),
+        )
+        .route(
+            "/chart/monthly/get-all",
+            web::post().to(get_dates_monthly_chart),
+        )
+        .route(
+            "/chart/monthly/{user_uuid}",
+            web::post().to(get_dates_monthly_chart_by_user_uuid),
         )
 }
 
@@ -276,6 +293,92 @@ async fn get_meet_type_chart_by_user_uuid(
     }
 
     match UserMeetDate::get_meet_type_chart_by_user_uuid(&web_data.db, user_uuid.into_inner()).await
+    {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+#[derive(Deserialize)]
+struct DateChartJson {
+    start_date: NaiveDateTime,
+    end_date: NaiveDateTime,
+}
+async fn get_dates_weekly_chart(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    data: web::Json<DateChartJson>,
+) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
+    match UserMeetDate::get_dates_weekly_chart(&web_data.db, data.start_date, data.end_date).await {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_dates_weekly_chart_by_user_uuid(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    user_uuid: web::Path<Uuid>,
+    data: web::Json<DateChartJson>,
+) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
+    match UserMeetDate::get_dates_weekly_chart_by_user_uuid(
+        &web_data.db,
+        user_uuid.into_inner(),
+        data.start_date,
+        data.end_date,
+    )
+    .await
+    {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_dates_monthly_chart(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    data: web::Json<DateChartJson>,
+) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
+    match UserMeetDate::get_dates_monthly_chart(&web_data.db, data.start_date, data.end_date).await
+    {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_dates_monthly_chart_by_user_uuid(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    user_uuid: web::Path<Uuid>,
+    data: web::Json<DateChartJson>,
+) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
+    match UserMeetDate::get_dates_monthly_chart_by_user_uuid(
+        &web_data.db,
+        user_uuid.into_inner(),
+        data.start_date,
+        data.end_date,
+    )
+    .await
     {
         Ok(chart) => HttpResponse::Ok().json(chart),
         Err(e) => ApiError::from(e).error_response(),

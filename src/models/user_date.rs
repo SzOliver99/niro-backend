@@ -10,7 +10,7 @@ use uuid::Uuid;
 use crate::{
     database::Database,
     models::{
-        dto::{IsCompletedChartDto, MeetTypeChartDto},
+        dto::{DatesMonthlyChartDto, DatesWeeklyChartDto, IsCompletedChartDto, MeetTypeChartDto},
         user::User,
     },
     utils::encrypt::{self, HmacSecret},
@@ -332,6 +332,170 @@ impl UserMeetDate {
             consultation: chart.consultation.unwrap(),
             service: chart.service.unwrap(),
             annual_review: chart.annual_review.unwrap(),
+        })
+    }
+
+    pub async fn get_dates_weekly_chart(
+        db: &Database,
+        start_date: NaiveDateTime,
+        end_date: NaiveDateTime,
+    ) -> Result<DatesWeeklyChartDto> {
+        let chart = sqlx::query!(
+            "SELECT
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 1) AS monday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 2) AS tuesday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 3) AS wednesday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 4) AS thursday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 5) AS friday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 6) AS saturday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 0) AS sunday
+            FROM user_dates
+            WHERE meet_date BETWEEN $1 AND $2",
+            start_date,
+            end_date
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(DatesWeeklyChartDto {
+            monday: chart.monday.unwrap(),
+            tuesday: chart.tuesday.unwrap(),
+            wednesday: chart.wednesday.unwrap(),
+            thursday: chart.thursday.unwrap(),
+            friday: chart.friday.unwrap(),
+            saturday: chart.saturday.unwrap(),
+            sunday: chart.sunday.unwrap(),
+        })
+    }
+
+    pub async fn get_dates_weekly_chart_by_user_uuid(
+        db: &Database,
+        user_uuid: Uuid,
+        start_date: NaiveDateTime,
+        end_date: NaiveDateTime,
+    ) -> Result<DatesWeeklyChartDto> {
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid))
+            .await?
+            .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
+
+        let chart = sqlx::query!(
+            "SELECT
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 1) AS monday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 2) AS tuesday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 3) AS wednesday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 4) AS thursday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 5) AS friday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 6) AS saturday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 0) AS sunday
+            FROM user_dates
+            WHERE meet_date BETWEEN $2 AND $3 AND user_id = $1",
+            user_id,
+            start_date,
+            end_date
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(DatesWeeklyChartDto {
+            monday: chart.monday.unwrap(),
+            tuesday: chart.tuesday.unwrap(),
+            wednesday: chart.wednesday.unwrap(),
+            thursday: chart.thursday.unwrap(),
+            friday: chart.friday.unwrap(),
+            saturday: chart.saturday.unwrap(),
+            sunday: chart.sunday.unwrap(),
+        })
+    }
+
+    pub async fn get_dates_monthly_chart(
+        db: &Database,
+        start_date: NaiveDateTime,
+        end_date: NaiveDateTime,
+    ) -> Result<DatesMonthlyChartDto> {
+        let chart = sqlx::query!(
+            "SELECT
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 1) AS january,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 2) AS february,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 3) AS march,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 4) AS april,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 5) AS may,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 6) AS june,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 7) AS july,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 8) AS august,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 9) AS september,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 10) AS october,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 11) AS november,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 12) AS december
+            FROM user_dates
+            WHERE meet_date BETWEEN $1 AND $2",
+            start_date,
+            end_date
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(DatesMonthlyChartDto {
+            january: chart.january.unwrap(),
+            february: chart.february.unwrap(),
+            march: chart.march.unwrap(),
+            april: chart.april.unwrap(),
+            may: chart.may.unwrap(),
+            june: chart.june.unwrap(),
+            july: chart.july.unwrap(),
+            august: chart.august.unwrap(),
+            september: chart.september.unwrap(),
+            october: chart.october.unwrap(),
+            november: chart.november.unwrap(),
+            december: chart.december.unwrap(),
+        })
+    }
+
+    pub async fn get_dates_monthly_chart_by_user_uuid(
+        db: &Database,
+        user_uuid: Uuid,
+        start_date: NaiveDateTime,
+        end_date: NaiveDateTime,
+    ) -> Result<DatesMonthlyChartDto> {
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid))
+            .await?
+            .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
+
+        let chart = sqlx::query!(
+            "SELECT
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 1) AS january,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 2) AS february,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 3) AS march,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 4) AS april,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 5) AS may,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 6) AS june,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 7) AS july,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 8) AS august,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 9) AS september,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 10) AS october,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 11) AS november,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 12) AS december
+            FROM user_dates
+            WHERE meet_date BETWEEN $2 AND $3 AND user_id = $1",
+            user_id,
+            start_date,
+            end_date
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(DatesMonthlyChartDto {
+            january: chart.january.unwrap(),
+            february: chart.february.unwrap(),
+            march: chart.march.unwrap(),
+            april: chart.april.unwrap(),
+            may: chart.may.unwrap(),
+            june: chart.june.unwrap(),
+            july: chart.july.unwrap(),
+            august: chart.august.unwrap(),
+            september: chart.september.unwrap(),
+            october: chart.october.unwrap(),
+            november: chart.november.unwrap(),
+            december: chart.december.unwrap(),
         })
     }
 }

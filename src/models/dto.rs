@@ -74,3 +74,30 @@ pub struct MeetTypeChartDto {
     pub service: i64,
     pub annual_review: i64,
 }
+
+#[derive(Serialize)]
+pub struct DatesWeeklyChartDto {
+    pub monday: i64,
+    pub tuesday: i64,
+    pub wednesday: i64,
+    pub thursday: i64,
+    pub friday: i64,
+    pub saturday: i64,
+    pub sunday: i64,
+}
+
+#[derive(Serialize)]
+pub struct DatesMonthlyChartDto {
+    pub january: i64,
+    pub february: i64,
+    pub march: i64,
+    pub april: i64,
+    pub may: i64,
+    pub june: i64,
+    pub july: i64,
+    pub august: i64,
+    pub september: i64,
+    pub october: i64,
+    pub november: i64,
+    pub december: i64,
+}
