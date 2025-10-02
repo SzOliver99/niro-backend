@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                COUNT(*) FILTER (WHERE is_completed = TRUE AND user_id = $1)  AS yes,\n                COUNT(*) FILTER (WHERE is_completed = FALSE AND user_id = $1) AS no\n            FROM user_dates;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "yes",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "no",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "01787bf402cf63c565b092d6c6d726636bdd5df87f6f8b39fbe1d0c422389618"
+}

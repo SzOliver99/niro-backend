@@ -59,3 +59,18 @@ pub struct ContractDto {
     pub created_by: String,
     pub handle_at: DateTime<Utc>,
 }
+
+// USER DATE CHART
+#[derive(Serialize)]
+pub struct IsCompletedChartDto {
+    pub yes: i64,
+    pub no: i64,
+}
+
+#[derive(Serialize)]
+pub struct MeetTypeChartDto {
+    pub needs_assessment: i64,
+    pub consultation: i64,
+    pub service: i64,
+    pub annual_review: i64,
+}

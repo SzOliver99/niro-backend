@@ -9,7 +9,10 @@ use uuid::Uuid;
 
 use crate::{
     database::Database,
-    models::user::User,
+    models::{
+        dto::{IsCompletedChartDto, MeetTypeChartDto},
+        user::User,
+    },
     utils::encrypt::{self, HmacSecret},
 };
 
@@ -207,8 +210,8 @@ impl UserMeetDate {
             &date_uuid,
             is_completed
         )
-            .execute(&db.pool)
-            .await?;
+        .execute(&db.pool)
+        .await?;
         Ok(())
     }
 
@@ -241,5 +244,94 @@ impl UserMeetDate {
             .execute(&db.pool)
             .await?;
         Ok(())
+    }
+
+    // CHART FUNCTIONS
+    pub async fn get_is_completed_chart(db: &Database) -> Result<IsCompletedChartDto> {
+        let chart = sqlx::query!(
+            "SELECT
+                COUNT(*) FILTER (WHERE is_completed = TRUE)  AS yes,
+                COUNT(*) FILTER (WHERE is_completed = FALSE) AS no
+            FROM user_dates;"
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(IsCompletedChartDto {
+            yes: chart.yes.unwrap(),
+            no: chart.no.unwrap(),
+        })
+    }
+
+    pub async fn get_is_completed_chart_by_user_uuid(
+        db: &Database,
+        user_uuid: Uuid,
+    ) -> Result<IsCompletedChartDto> {
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid))
+            .await?
+            .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
+
+        let chart = sqlx::query!(
+            "SELECT
+                COUNT(*) FILTER (WHERE is_completed = TRUE AND user_id = $1)  AS yes,
+                COUNT(*) FILTER (WHERE is_completed = FALSE AND user_id = $1) AS no
+            FROM user_dates;",
+            user_id
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(IsCompletedChartDto {
+            yes: chart.yes.unwrap(),
+            no: chart.no.unwrap(),
+        })
+    }
+
+    pub async fn get_meet_type_chart(db: &Database) -> Result<MeetTypeChartDto> {
+        let chart = sqlx::query!(
+            "SELECT
+                COUNT(*) FILTER (WHERE meet_type = 'NeedsAssessment') AS needs_assessment,
+                COUNT(*) FILTER (WHERE meet_type = 'Consultation') AS consultation,
+                COUNT(*) FILTER (WHERE meet_type = 'Service') AS service,
+                COUNT(*) FILTER (WHERE meet_type = 'AnnualReview') AS annual_review
+            FROM user_dates;"
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(MeetTypeChartDto {
+            needs_assessment: chart.needs_assessment.unwrap(),
+            consultation: chart.consultation.unwrap(),
+            service: chart.service.unwrap(),
+            annual_review: chart.annual_review.unwrap(),
+        })
+    }
+
+    pub async fn get_meet_type_chart_by_user_uuid(
+        db: &Database,
+        user_uuid: Uuid,
+    ) -> Result<MeetTypeChartDto> {
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid))
+            .await?
+            .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
+
+        let chart = sqlx::query!(
+            "SELECT
+                COUNT(*) FILTER (WHERE meet_type = 'NeedsAssessment' AND user_id = $1) AS needs_assessment,
+                COUNT(*) FILTER (WHERE meet_type = 'Consultation' AND user_id = $1) AS consultation,
+                COUNT(*) FILTER (WHERE meet_type = 'Service' AND user_id = $1) AS service,
+                COUNT(*) FILTER (WHERE meet_type = 'AnnualReview' AND user_id = $1) AS annual_review
+            FROM user_dates;",
+            user_id
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(MeetTypeChartDto {
+            needs_assessment: chart.needs_assessment.unwrap(),
+            consultation: chart.consultation.unwrap(),
+            service: chart.service.unwrap(),
+            annual_review: chart.annual_review.unwrap(),
+        })
     }
 }

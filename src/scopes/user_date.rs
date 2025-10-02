@@ -25,6 +25,22 @@ pub fn dates_scope() -> Scope {
         .route("/{date_uuid}/state", web::put().to(change_date_state))
         .route("/change/user", web::put().to(change_dates_handler))
         .route("/delete", web::delete().to(delete_dates))
+        .route(
+            "/chart/is-completed/get-all",
+            web::get().to(get_is_completed_chart),
+        )
+        .route(
+            "/chart/is-completed/{user_uuid}",
+            web::get().to(get_is_completed_chart_by_user_uuid),
+        )
+        .route(
+            "/chart/meet-type/get-all",
+            web::get().to(get_meet_type_chart),
+        )
+        .route(
+            "/chart/meet-type/{user_uuid}",
+            web::get().to(get_meet_type_chart_by_user_uuid),
+        )
 }
 
 #[derive(Deserialize, Clone)]
@@ -147,7 +163,6 @@ async fn get_date_by_uuid(
     }
 }
 
-
 async fn change_date_state(
     web_data: web::Data<WebData>,
     _: AuthenticationToken,
@@ -197,6 +212,72 @@ async fn delete_dates(
 
     match UserMeetDate::delete(&web_data.db, data.0).await {
         Ok(_) => HttpResponse::Ok().json("Időpont(ok) sikeresen tölölve!"),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+// USER DATE CHART API's
+async fn get_is_completed_chart(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
+    match UserMeetDate::get_is_completed_chart(&web_data.db).await {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_is_completed_chart_by_user_uuid(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    user_uuid: web::Path<Uuid>,
+) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
+    match UserMeetDate::get_is_completed_chart_by_user_uuid(&web_data.db, user_uuid.into_inner())
+        .await
+    {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_meet_type_chart(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
+    match UserMeetDate::get_meet_type_chart(&web_data.db).await {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_meet_type_chart_by_user_uuid(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    user_uuid: web::Path<Uuid>,
+) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
+    match UserMeetDate::get_meet_type_chart_by_user_uuid(&web_data.db, user_uuid.into_inner()).await
+    {
+        Ok(chart) => HttpResponse::Ok().json(chart),
         Err(e) => ApiError::from(e).error_response(),
     }
 }

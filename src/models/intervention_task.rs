@@ -7,13 +7,12 @@ use sqlx::prelude::Type;
 use strum::{AsRefStr, Display, EnumString};
 use uuid::Uuid;
 
+use crate::models::dto::InterventionTaskDto;
 use crate::{
     database::Database,
     models::{customer::Customer, user::User},
     utils::encrypt::{self, HmacSecret},
 };
-use crate::models::dto::{InterventionTaskDto, LeadListItemDto};
-use crate::models::lead::{Lead, LeadStatus};
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Default, Clone)]
@@ -34,6 +33,7 @@ pub struct InterventionTask {
 
 #[derive(Debug, Serialize, Deserialize, Clone, EnumString, Display, Type, AsRefStr)]
 pub enum InterventionTaskStatus {
+    Pending,
     PaymentPromise,
     Processed,
     Nonpayment,
@@ -91,7 +91,11 @@ impl InterventionTask {
         Ok(intervention_task_row.id)
     }
 
-    pub async fn modify(db: &Database, intervention_task_uuid: Uuid, updated_intervention_task: InterventionTask) -> Result<()> {
+    pub async fn modify(
+        db: &Database,
+        intervention_task_uuid: Uuid,
+        updated_intervention_task: InterventionTask,
+    ) -> Result<()> {
         sqlx::query!(
             "UPDATE customer_intervention_tasks
              SET contract_number = $1,
@@ -111,8 +115,8 @@ impl InterventionTask {
             updated_intervention_task.status.map(|s| s.to_string()),
             intervention_task_uuid
         )
-            .execute(&db.pool)
-            .await?;
+        .execute(&db.pool)
+        .await?;
 
         Ok(())
     }
@@ -144,7 +148,7 @@ impl InterventionTask {
                     &row.phone_number_enc,
                     &row.phone_number_nonce,
                 )
-                    .unwrap_or_default(),
+                .unwrap_or_default(),
                 email: encrypt::decrypt_value(key, &row.email_enc, &row.email_nonce)
                     .unwrap_or_default(),
                 address: encrypt::decrypt_value(key, &row.address_enc, &row.address_nonce)
@@ -164,7 +168,10 @@ impl InterventionTask {
         Ok(items)
     }
 
-    pub async fn get_by_customer_uuid(db: &Database, customer_uuid: Uuid) -> Result<Vec<InterventionTask>> {
+    pub async fn get_by_customer_uuid(
+        db: &Database,
+        customer_uuid: Uuid,
+    ) -> Result<Vec<InterventionTask>> {
         let customer_id = Customer::get_id_by_uuid(db, Some(customer_uuid))
             .await?
             .unwrap();
@@ -186,8 +193,8 @@ impl InterventionTask {
 	            customer_id = $1",
             customer_id
         )
-            .fetch_all(&db.pool)
-            .await?;
+        .fetch_all(&db.pool)
+        .await?;
 
         let items: Vec<InterventionTask> = rows
             .into_iter()
@@ -208,7 +215,10 @@ impl InterventionTask {
         Ok(items)
     }
 
-    pub async fn get_by_uuid(db: &Database, intervention_task_uuid: Uuid) -> Result<InterventionTask> {
+    pub async fn get_by_uuid(
+        db: &Database,
+        intervention_task_uuid: Uuid,
+    ) -> Result<InterventionTask> {
         let row = sqlx::query!(
             "SELECT
                 uuid,
@@ -226,8 +236,8 @@ impl InterventionTask {
 	            uuid = $1",
             intervention_task_uuid
         )
-            .fetch_one(&db.pool)
-            .await?;
+        .fetch_one(&db.pool)
+        .await?;
 
         Ok(InterventionTask {
             uuid: row.uuid,
@@ -243,7 +253,10 @@ impl InterventionTask {
         })
     }
 
-    pub async fn get_customer_uuid(db: &Database, intervention_task_uuid: Uuid) -> Result<Option<Uuid>> {
+    pub async fn get_customer_uuid(
+        db: &Database,
+        intervention_task_uuid: Uuid,
+    ) -> Result<Option<Uuid>> {
         let customer = sqlx::query!(
             "SELECT
                 c.uuid
@@ -254,8 +267,8 @@ impl InterventionTask {
                 it.uuid = $1",
             intervention_task_uuid
         )
-            .fetch_one(&db.pool)
-            .await?;
+        .fetch_one(&db.pool)
+        .await?;
 
         Ok(customer.uuid)
     }
@@ -269,8 +282,8 @@ impl InterventionTask {
             "SELECT user_id as id FROM user_info WHERE full_name = $1",
             user_full_name
         )
-            .fetch_one(&db.pool)
-            .await?;
+        .fetch_one(&db.pool)
+        .await?;
 
         sqlx::query!(
             "UPDATE customer_intervention_tasks
@@ -279,8 +292,8 @@ impl InterventionTask {
             &intervention_task_uuids,
             user.id
         )
-            .execute(&db.pool)
-            .await?;
+        .execute(&db.pool)
+        .await?;
         Ok(())
     }
 
@@ -290,8 +303,8 @@ impl InterventionTask {
              WHERE uuid = ANY($1)",
             &intervention_task_uuids
         )
-            .execute(&db.pool)
-            .await?;
+        .execute(&db.pool)
+        .await?;
 
         Ok(())
     }
