@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 1) AS january,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 2) AS february,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 3) AS march,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 4) AS april,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 5) AS may,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 6) AS june,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 7) AS july,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 8) AS august,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 9) AS september,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 10) AS october,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 11) AS november,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 12) AS december\n            FROM user_dates\n            WHERE meet_date BETWEEN $2 AND $3 AND user_id = $1",
+  "query": "SELECT\n                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 1) AS january,\n                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 2) AS february,\n                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 3) AS march,\n                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 4) AS april,\n                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 5) AS may,\n                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 6) AS june,\n                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 7) AS july,\n                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 8) AS august,\n                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 9) AS september,\n                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 10) AS october,\n                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 11) AS november,\n                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 12) AS december\n            FROM user_dates\n            WHERE meet_date BETWEEN $1 AND $2",
   "describe": {
     "columns": [
       {
@@ -66,7 +66,6 @@
     ],
     "parameters": {
       "Left": [
-        "Int4",
         "Timestamp",
         "Timestamp"
       ]
@@ -86,5 +85,5 @@
       null
     ]
   },
-  "hash": "8ac2998f51abe64b49c06e00d6945a5c60762c19e1f358c0d977aaf546932d2d"
+  "hash": "30967da22cbe5c1572029a7248585c5e48197296dd77a65e7172eb2a8e649314"
 }

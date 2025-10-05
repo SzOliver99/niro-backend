@@ -414,18 +414,18 @@ impl UserMeetDate {
     ) -> Result<DatesMonthlyChartDto> {
         let chart = sqlx::query!(
             "SELECT
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 1) AS january,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 2) AS february,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 3) AS march,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 4) AS april,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 5) AS may,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 6) AS june,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 7) AS july,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 8) AS august,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 9) AS september,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 10) AS october,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 11) AS november,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 12) AS december
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 1) AS january,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 2) AS february,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 3) AS march,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 4) AS april,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 5) AS may,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 6) AS june,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 7) AS july,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 8) AS august,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 9) AS september,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 10) AS october,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 11) AS november,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 12) AS december
             FROM user_dates
             WHERE meet_date BETWEEN $1 AND $2",
             start_date,
@@ -462,18 +462,18 @@ impl UserMeetDate {
 
         let chart = sqlx::query!(
             "SELECT
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 1) AS january,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 2) AS february,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 3) AS march,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 4) AS april,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 5) AS may,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 6) AS june,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 7) AS july,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 8) AS august,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 9) AS september,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 10) AS october,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 11) AS november,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 12) AS december
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 1) AS january,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 2) AS february,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 3) AS march,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 4) AS april,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 5) AS may,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 6) AS june,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 7) AS july,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 8) AS august,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 9) AS september,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 10) AS october,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 11) AS november,
+                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 12) AS december
             FROM user_dates
             WHERE meet_date BETWEEN $2 AND $3 AND user_id = $1",
             user_id,
