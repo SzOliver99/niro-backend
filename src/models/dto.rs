@@ -95,3 +95,41 @@ pub struct DatesMonthlyChartDto {
     pub week4: i64,
     pub week5: i64,
 }
+
+// CONTRACTS CHART
+#[derive(Serialize)]
+pub struct PortfolioDto {
+    pub bonus_life_program: i64,
+    pub life_program: i64,
+    pub allianz_care_now: i64,
+    pub health_program: i64,
+    pub myhome_home_insurance: i64,
+    pub mfo_home_insurance: i64,
+    pub corporate_property_insurance: i64,
+    pub kgfb: i64,
+    pub casco: i64,
+    pub travel_insurance: i64,
+    pub condominium_insurance: i64,
+    pub agricultural_insurance: i64,
+}
+
+#[derive(Serialize)]
+pub struct WeeklyProductionChartDto {
+    pub monday: i64,
+    pub tuesday: i64,
+    pub wednesday: i64,
+    pub thursday: i64,
+    pub friday: i64,
+    pub saturday: i64,
+    pub sunday: i64,
+}
+
+#[derive(Serialize)]
+pub struct MonthlyProductionChartDto {
+    pub month: i16,
+    pub week1: i64,
+    pub week2: i64,
+    pub week3: i64,
+    pub week4: i64,
+    pub week5: i64,
+}

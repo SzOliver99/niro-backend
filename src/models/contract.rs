@@ -1,6 +1,6 @@
 use anyhow::{Ok, Result, anyhow};
 use chacha20poly1305::Key;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use sqlx::prelude::Type;
@@ -9,7 +9,11 @@ use uuid::Uuid;
 
 use crate::{
     database::Database,
-    models::{customer::Customer, dto::ContractDto, user::User},
+    models::{
+        customer::Customer,
+        dto::{ContractDto, MonthlyProductionChartDto, PortfolioDto, WeeklyProductionChartDto},
+        user::User,
+    },
     utils::encrypt::{self, HmacSecret},
 };
 
@@ -359,8 +363,8 @@ impl Contract {
             &contract_uuid,
             value
         )
-            .execute(&db.pool)
-            .await?;
+        .execute(&db.pool)
+        .await?;
         Ok(())
     }
 
@@ -398,5 +402,241 @@ impl Contract {
         .await?;
 
         Ok(())
+    }
+
+    // CHART FUNCTIONS
+    pub async fn get_portfolio_chart(db: &Database) -> Result<PortfolioDto> {
+        let chart = sqlx::query!(
+            "SELECT
+                COUNT(*) FILTER (WHERE contract_type = 'BonusLifeProgram') AS bonus_life_program,
+                COUNT(*) FILTER (WHERE contract_type = 'LifeProgram') AS life_program,
+                COUNT(*) FILTER (WHERE contract_type = 'AllianzCareNow') AS allianz_care_now,
+                COUNT(*) FILTER (WHERE contract_type = 'HealthProgram') AS health_program,
+                COUNT(*) FILTER (WHERE contract_type = 'MyhomeHomeInsurance') AS myhome_home_insurance,
+                COUNT(*) FILTER (WHERE contract_type = 'MfoHomeInsurance') AS mfo_home_insurance,
+                COUNT(*) FILTER (WHERE contract_type = 'CorporatePropertyInsurance') AS corporate_property_insurance,
+                COUNT(*) FILTER (WHERE contract_type = 'Kgfb') AS kgfb,
+                COUNT(*) FILTER (WHERE contract_type = 'Casco') AS casco,
+                COUNT(*) FILTER (WHERE contract_type = 'TravelInsurance') AS travel_insurance,
+                COUNT(*) FILTER (WHERE contract_type = 'CondominiumInsurance') AS condominium_insurance,
+                COUNT(*) FILTER (WHERE contract_type = 'AgriculturalInsurance') AS agricultural_insurance
+            FROM customer_contracts;"
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(PortfolioDto {
+            bonus_life_program: chart.bonus_life_program.unwrap(),
+            life_program: chart.life_program.unwrap(),
+            allianz_care_now: chart.allianz_care_now.unwrap(),
+            health_program: chart.health_program.unwrap(),
+            myhome_home_insurance: chart.myhome_home_insurance.unwrap(),
+            mfo_home_insurance: chart.mfo_home_insurance.unwrap(),
+            corporate_property_insurance: chart.corporate_property_insurance.unwrap(),
+            kgfb: chart.kgfb.unwrap(),
+            casco: chart.casco.unwrap(),
+            travel_insurance: chart.travel_insurance.unwrap(),
+            condominium_insurance: chart.condominium_insurance.unwrap(),
+            agricultural_insurance: chart.agricultural_insurance.unwrap(),
+        })
+    }
+
+    pub async fn get_portfolio_chart_by_user_uuid(
+        db: &Database,
+        user_uuid: Uuid,
+    ) -> Result<PortfolioDto> {
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid))
+            .await?
+            .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
+
+        let chart = sqlx::query!(
+            "SELECT
+                COUNT(*) FILTER (WHERE contract_type = 'BonusLifeProgram') AS bonus_life_program,
+                COUNT(*) FILTER (WHERE contract_type = 'LifeProgram') AS life_program,
+                COUNT(*) FILTER (WHERE contract_type = 'AllianzCareNow') AS allianz_care_now,
+                COUNT(*) FILTER (WHERE contract_type = 'HealthProgram') AS health_program,
+                COUNT(*) FILTER (WHERE contract_type = 'MyhomeHomeInsurance') AS myhome_home_insurance,
+                COUNT(*) FILTER (WHERE contract_type = 'MfoHomeInsurance') AS mfo_home_insurance,
+                COUNT(*) FILTER (WHERE contract_type = 'CorporatePropertyInsurance') AS corporate_property_insurance,
+                COUNT(*) FILTER (WHERE contract_type = 'Kgfb') AS kgfb,
+                COUNT(*) FILTER (WHERE contract_type = 'Casco') AS casco,
+                COUNT(*) FILTER (WHERE contract_type = 'TravelInsurance') AS travel_insurance,
+                COUNT(*) FILTER (WHERE contract_type = 'CondominiumInsurance') AS condominium_insurance,
+                COUNT(*) FILTER (WHERE contract_type = 'AgriculturalInsurance') AS agricultural_insurance
+            FROM customer_contracts
+            WHERE user_id = $1",
+            user_id
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(PortfolioDto {
+            bonus_life_program: chart.bonus_life_program.unwrap(),
+            life_program: chart.life_program.unwrap(),
+            allianz_care_now: chart.allianz_care_now.unwrap(),
+            health_program: chart.health_program.unwrap(),
+            myhome_home_insurance: chart.myhome_home_insurance.unwrap(),
+            mfo_home_insurance: chart.mfo_home_insurance.unwrap(),
+            corporate_property_insurance: chart.corporate_property_insurance.unwrap(),
+            kgfb: chart.kgfb.unwrap(),
+            casco: chart.casco.unwrap(),
+            travel_insurance: chart.travel_insurance.unwrap(),
+            condominium_insurance: chart.condominium_insurance.unwrap(),
+            agricultural_insurance: chart.agricultural_insurance.unwrap(),
+        })
+    }
+
+    pub async fn get_weekly_production_chart(
+        db: &Database,
+        start_date: NaiveDateTime,
+        end_date: NaiveDateTime,
+    ) -> Result<WeeklyProductionChartDto> {
+        let chart = sqlx::query!(
+            "SELECT
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 1) AS monday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 2) AS tuesday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 3) AS wednesday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 4) AS thursday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 5) AS friday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 6) AS saturday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 0) AS sunday
+            FROM customer_contracts
+            WHERE handle_at BETWEEN $1 AND $2",
+            start_date.and_utc(),
+            end_date.and_utc()
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(WeeklyProductionChartDto {
+            monday: chart.monday.unwrap(),
+            tuesday: chart.tuesday.unwrap(),
+            wednesday: chart.wednesday.unwrap(),
+            thursday: chart.thursday.unwrap(),
+            friday: chart.friday.unwrap(),
+            saturday: chart.saturday.unwrap(),
+            sunday: chart.sunday.unwrap(),
+        })
+    }
+
+    pub async fn get_weekly_production_chart_by_user_uuid(
+        db: &Database,
+        user_uuid: Uuid,
+        start_date: NaiveDateTime,
+        end_date: NaiveDateTime,
+    ) -> Result<WeeklyProductionChartDto> {
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid))
+            .await?
+            .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
+
+        let chart = sqlx::query!(
+            "SELECT
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 1) AS monday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 2) AS tuesday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 3) AS wednesday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 4) AS thursday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 5) AS friday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 6) AS saturday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 0) AS sunday
+            FROM customer_contracts
+            WHERE handle_at BETWEEN $2 AND $3 AND user_id = $1",
+            user_id,
+            start_date.and_utc(),
+            end_date.and_utc()
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(WeeklyProductionChartDto {
+            monday: chart.monday.unwrap(),
+            tuesday: chart.tuesday.unwrap(),
+            wednesday: chart.wednesday.unwrap(),
+            thursday: chart.thursday.unwrap(),
+            friday: chart.friday.unwrap(),
+            saturday: chart.saturday.unwrap(),
+            sunday: chart.sunday.unwrap(),
+        })
+    }
+
+    pub async fn get_monthly_production_chart(
+        db: &Database,
+        start_date: NaiveDateTime,
+        end_date: NaiveDateTime,
+    ) -> Result<Vec<MonthlyProductionChartDto>> {
+        let charts = sqlx::query!(
+            "SELECT
+                CAST(EXTRACT(MONTH FROM handle_at) as SMALLINT) AS month,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 1) AS week1,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 2) AS week2,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 3) AS week3,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 4) AS week4,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 5) AS week5
+            FROM customer_contracts
+            WHERE handle_at BETWEEN $1 AND $2
+            GROUP BY month
+            ORDER BY month;",
+            start_date.and_utc(),
+            end_date.and_utc()
+        )
+        .fetch_all(&db.pool)
+        .await?;
+
+        let dates = charts
+            .into_iter()
+            .map(|chart| MonthlyProductionChartDto {
+                month: chart.month.unwrap(),
+                week1: chart.week1.unwrap(),
+                week2: chart.week2.unwrap(),
+                week3: chart.week3.unwrap(),
+                week4: chart.week4.unwrap(),
+                week5: chart.week5.unwrap(),
+            })
+            .collect();
+
+        Ok(dates)
+    }
+
+    pub async fn get_monthly_production_chart_by_user_uuid(
+        db: &Database,
+        user_uuid: Uuid,
+        start_date: NaiveDateTime,
+        end_date: NaiveDateTime,
+    ) -> Result<Vec<MonthlyProductionChartDto>> {
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid))
+            .await?
+            .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
+
+        let charts = sqlx::query!(
+            "SELECT
+                CAST(EXTRACT(MONTH FROM handle_at) as SMALLINT) AS month,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 1) AS week1,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 2) AS week2,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 3) AS week3,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 4) AS week4,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 5) AS week5
+            FROM customer_contracts
+            WHERE handle_at BETWEEN $2 AND $3 AND user_id = $1
+            GROUP BY month
+            ORDER BY month;",
+            user_id,
+            start_date.and_utc(),
+            end_date.and_utc()
+        )
+        .fetch_all(&db.pool)
+        .await?;
+
+        let dates = charts
+            .into_iter()
+            .map(|chart| MonthlyProductionChartDto {
+                month: chart.month.unwrap(),
+                week1: chart.week1.unwrap(),
+                week2: chart.week2.unwrap(),
+                week3: chart.week3.unwrap(),
+                week4: chart.week4.unwrap(),
+                week5: chart.week5.unwrap(),
+            })
+            .collect();
+
+        Ok(dates)
     }
 }

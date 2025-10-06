@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                CAST(EXTRACT(MONTH FROM handle_at) as SMALLINT) AS month,\n                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 1) AS week1,\n                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 2) AS week2,\n                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 3) AS week3,\n                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 4) AS week4,\n                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 5) AS week5\n            FROM customer_contracts\n            WHERE handle_at BETWEEN $1 AND $2\n            GROUP BY month\n            ORDER BY month;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "month",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 1,
+        "name": "week1",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "week2",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "week3",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "week4",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "week5",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "28eb231766202350b2ac4e2609d42f65594e7ad95975a84165fe1290e96982ae"
+}

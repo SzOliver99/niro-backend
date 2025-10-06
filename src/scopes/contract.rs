@@ -1,4 +1,5 @@
 use actix_web::{HttpResponse, Responder, ResponseError, Scope, web};
+use chrono::NaiveDateTime;
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -12,7 +13,6 @@ use crate::{
     utils::error::ApiError,
     web_data::WebData,
 };
-use crate::models::user_date::UserMeetDate;
 
 pub fn contract_scope() -> Scope {
     web::scope("/contract")
@@ -27,9 +27,36 @@ pub fn contract_scope() -> Scope {
             "/{contract_uuid}/customer",
             web::get().to(get_customer_uuid),
         )
-        .route("/{contract_uuid}/state", web::put().to(change_first_payment_state))
+        .route(
+            "/{contract_uuid}/state",
+            web::put().to(change_first_payment_state),
+        )
         .route("/change/user", web::put().to(change_contract_handler))
         .route("/delete", web::delete().to(delete_contract))
+        .route(
+            "/chart/portfolio/get-all",
+            web::get().to(get_portfolio_chart),
+        )
+        .route(
+            "/chart/portfolio/{user_uuid}",
+            web::get().to(get_portfolio_chart_by_user_uuid),
+        )
+        .route(
+            "/chart/weekly/get-all",
+            web::post().to(get_weekly_production_chart),
+        )
+        .route(
+            "/chart/weekly/{user_uuid}",
+            web::post().to(get_weekly_production_chart_by_user_uuid),
+        )
+        .route(
+            "/chart/monthly/get-all",
+            web::post().to(get_monthly_production_chart),
+        )
+        .route(
+            "/chart/monthly/{user_uuid}",
+            web::post().to(get_monthly_production_chart_by_user_uuid),
+        )
 }
 
 #[derive(Deserialize, Clone)]
@@ -156,7 +183,9 @@ async fn change_first_payment_state(
     contract_uuid: web::Path<Uuid>,
     data: web::Json<bool>,
 ) -> impl Responder {
-    match Contract::change_first_payment_state(&web_data.db, contract_uuid.into_inner(), data.0).await {
+    match Contract::change_first_payment_state(&web_data.db, contract_uuid.into_inner(), data.0)
+        .await
+    {
         Ok(_) => HttpResponse::Ok().json("Szerződés első díj befizetés módosítva!"),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -199,6 +228,124 @@ async fn delete_contract(
 
     match Contract::delete(&web_data.db, data.0).await {
         Ok(_) => HttpResponse::Created().json("Szerződés(ek) sikeresen törölve!"),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+#[derive(Deserialize)]
+struct ContractChartJson {
+    start_date: NaiveDateTime,
+    end_date: NaiveDateTime,
+}
+async fn get_portfolio_chart(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
+    match Contract::get_portfolio_chart(&web_data.db).await {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_portfolio_chart_by_user_uuid(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    user_uuid: web::Path<Uuid>,
+) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
+    match Contract::get_portfolio_chart_by_user_uuid(&web_data.db, user_uuid.into_inner()).await {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_weekly_production_chart(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    data: web::Json<ContractChartJson>,
+) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
+    match Contract::get_weekly_production_chart(&web_data.db, data.start_date, data.end_date).await
+    {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_weekly_production_chart_by_user_uuid(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    user_uuid: web::Path<Uuid>,
+    data: web::Json<ContractChartJson>,
+) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
+    match Contract::get_weekly_production_chart_by_user_uuid(
+        &web_data.db,
+        user_uuid.into_inner(),
+        data.start_date,
+        data.end_date,
+    )
+    .await
+    {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_monthly_production_chart(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    data: web::Json<ContractChartJson>,
+) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
+    match Contract::get_monthly_production_chart(&web_data.db, data.start_date, data.end_date).await
+    {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_monthly_production_chart_by_user_uuid(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    user_uuid: web::Path<Uuid>,
+    data: web::Json<ContractChartJson>,
+) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
+    match Contract::get_monthly_production_chart_by_user_uuid(
+        &web_data.db,
+        user_uuid.into_inner(),
+        data.start_date,
+        data.end_date,
+    )
+    .await
+    {
+        Ok(chart) => HttpResponse::Ok().json(chart),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
