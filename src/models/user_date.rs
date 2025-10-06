@@ -411,43 +411,38 @@ impl UserMeetDate {
         db: &Database,
         start_date: NaiveDateTime,
         end_date: NaiveDateTime,
-    ) -> Result<DatesMonthlyChartDto> {
-        let chart = sqlx::query!(
+    ) -> Result<Vec<DatesMonthlyChartDto>> {
+        let charts = sqlx::query!(
             "SELECT
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 1) AS january,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 2) AS february,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 3) AS march,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 4) AS april,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 5) AS may,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 6) AS june,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 7) AS july,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 8) AS august,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 9) AS september,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 10) AS october,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 11) AS november,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 12) AS december
+                CAST(EXTRACT(MONTH FROM meet_date) as SMALLINT) AS month,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM meet_date) - EXTRACT(WEEK FROM DATE_TRUNC('month', meet_date)) + 1 = 1) AS week1,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM meet_date) - EXTRACT(WEEK FROM DATE_TRUNC('month', meet_date)) + 1 = 2) AS week2,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM meet_date) - EXTRACT(WEEK FROM DATE_TRUNC('month', meet_date)) + 1 = 3) AS week3,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM meet_date) - EXTRACT(WEEK FROM DATE_TRUNC('month', meet_date)) + 1 = 4) AS week4,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM meet_date) - EXTRACT(WEEK FROM DATE_TRUNC('month', meet_date)) + 1 = 5) AS week5
             FROM user_dates
-            WHERE meet_date BETWEEN $1 AND $2",
+            WHERE meet_date BETWEEN $1 AND $2
+            GROUP BY month
+            ORDER BY month;",
             start_date,
             end_date
         )
-        .fetch_one(&db.pool)
+        .fetch_all(&db.pool)
         .await?;
 
-        Ok(DatesMonthlyChartDto {
-            january: chart.january.unwrap(),
-            february: chart.february.unwrap(),
-            march: chart.march.unwrap(),
-            april: chart.april.unwrap(),
-            may: chart.may.unwrap(),
-            june: chart.june.unwrap(),
-            july: chart.july.unwrap(),
-            august: chart.august.unwrap(),
-            september: chart.september.unwrap(),
-            october: chart.october.unwrap(),
-            november: chart.november.unwrap(),
-            december: chart.december.unwrap(),
-        })
+        let dates = charts
+            .into_iter()
+            .map(|chart| DatesMonthlyChartDto {
+                month: chart.month.unwrap(),
+                week1: chart.week1.unwrap(),
+                week2: chart.week2.unwrap(),
+                week3: chart.week3.unwrap(),
+                week4: chart.week4.unwrap(),
+                week5: chart.week5.unwrap(),
+            })
+            .collect();
+
+        Ok(dates)
     }
 
     pub async fn get_dates_monthly_chart_by_user_uuid(
@@ -455,47 +450,42 @@ impl UserMeetDate {
         user_uuid: Uuid,
         start_date: NaiveDateTime,
         end_date: NaiveDateTime,
-    ) -> Result<DatesMonthlyChartDto> {
+    ) -> Result<Vec<DatesMonthlyChartDto>> {
         let user_id = User::get_id_by_uuid(db, Some(user_uuid))
             .await?
             .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
 
-        let chart = sqlx::query!(
+        let charts = sqlx::query!(
             "SELECT
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 1) AS january,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 2) AS february,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 3) AS march,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 4) AS april,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 5) AS may,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 6) AS june,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 7) AS july,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 8) AS august,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 9) AS september,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 10) AS october,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 11) AS november,
-                COUNT(*) FILTER (WHERE EXTRACT(MONTH FROM meet_date) = 12) AS december
+                CAST(EXTRACT(MONTH FROM meet_date) as SMALLINT) AS month,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM meet_date) - EXTRACT(WEEK FROM DATE_TRUNC('month', meet_date)) + 1 = 1) AS week1,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM meet_date) - EXTRACT(WEEK FROM DATE_TRUNC('month', meet_date)) + 1 = 2) AS week2,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM meet_date) - EXTRACT(WEEK FROM DATE_TRUNC('month', meet_date)) + 1 = 3) AS week3,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM meet_date) - EXTRACT(WEEK FROM DATE_TRUNC('month', meet_date)) + 1 = 4) AS week4,
+                COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM meet_date) - EXTRACT(WEEK FROM DATE_TRUNC('month', meet_date)) + 1 = 5) AS week5
             FROM user_dates
-            WHERE meet_date BETWEEN $2 AND $3 AND user_id = $1",
+            WHERE meet_date BETWEEN $2 AND $3 AND user_id = $1
+            GROUP BY month
+            ORDER BY month;",
             user_id,
             start_date,
             end_date
         )
-        .fetch_one(&db.pool)
+        .fetch_all(&db.pool)
         .await?;
 
-        Ok(DatesMonthlyChartDto {
-            january: chart.january.unwrap(),
-            february: chart.february.unwrap(),
-            march: chart.march.unwrap(),
-            april: chart.april.unwrap(),
-            may: chart.may.unwrap(),
-            june: chart.june.unwrap(),
-            july: chart.july.unwrap(),
-            august: chart.august.unwrap(),
-            september: chart.september.unwrap(),
-            october: chart.october.unwrap(),
-            november: chart.november.unwrap(),
-            december: chart.december.unwrap(),
-        })
+        let dates = charts
+            .into_iter()
+            .map(|chart| DatesMonthlyChartDto {
+                month: chart.month.unwrap(),
+                week1: chart.week1.unwrap(),
+                week2: chart.week2.unwrap(),
+                week3: chart.week3.unwrap(),
+                week4: chart.week4.unwrap(),
+                week5: chart.week5.unwrap(),
+            })
+            .collect();
+
+        Ok(dates)
     }
 }

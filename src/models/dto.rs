@@ -88,16 +88,10 @@ pub struct DatesWeeklyChartDto {
 
 #[derive(Serialize)]
 pub struct DatesMonthlyChartDto {
-    pub january: i64,
-    pub february: i64,
-    pub march: i64,
-    pub april: i64,
-    pub may: i64,
-    pub june: i64,
-    pub july: i64,
-    pub august: i64,
-    pub september: i64,
-    pub october: i64,
-    pub november: i64,
-    pub december: i64,
+    pub month: i16,
+    pub week1: i64,
+    pub week2: i64,
+    pub week3: i64,
+    pub week4: i64,
+    pub week5: i64,
 }
