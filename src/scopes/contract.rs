@@ -50,11 +50,19 @@ pub fn contract_scope() -> Scope {
             web::post().to(get_weekly_production_chart_by_user_uuid),
         )
         .route(
-            "/chart/monthly/get-all",
+            "/chart/monthly/value/get-all",
+            web::post().to(get_monthly_production_value_chart),
+        )
+        .route(
+            "/chart/monthly/value/{user_uuid}",
+            web::post().to(get_monthly_production_value_chart_by_user_uuid),
+        )
+        .route(
+            "/chart/monthly/production/get-all",
             web::post().to(get_monthly_production_chart),
         )
         .route(
-            "/chart/monthly/{user_uuid}",
+            "/chart/monthly/production/{user_uuid}",
             web::post().to(get_monthly_production_chart_by_user_uuid),
         )
 }
@@ -297,6 +305,48 @@ async fn get_weekly_production_chart_by_user_uuid(
     }
 
     match Contract::get_weekly_production_chart_by_user_uuid(
+        &web_data.db,
+        user_uuid.into_inner(),
+        data.start_date,
+        data.end_date,
+    )
+    .await
+    {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_monthly_production_value_chart(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    data: web::Json<ContractChartJson>,
+) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
+    match Contract::get_monthly_production_value_chart(&web_data.db, data.start_date, data.end_date)
+        .await
+    {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_monthly_production_value_chart_by_user_uuid(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    user_uuid: web::Path<Uuid>,
+    data: web::Json<ContractChartJson>,
+) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
+    match Contract::get_monthly_production_value_chart_by_user_uuid(
         &web_data.db,
         user_uuid.into_inner(),
         data.start_date,

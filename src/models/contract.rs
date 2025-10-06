@@ -558,6 +558,88 @@ impl Contract {
         })
     }
 
+    pub async fn get_monthly_production_value_chart(
+        db: &Database,
+        start_date: NaiveDateTime,
+        end_date: NaiveDateTime,
+    ) -> Result<Vec<MonthlyProductionChartDto>> {
+        let charts = sqlx::query!(
+            "SELECT
+                CAST(EXTRACT(MONTH FROM handle_at) AS SMALLINT) AS month,
+                COALESCE(SUM(annual_fee) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 1), 0) AS week1,
+                COALESCE(SUM(annual_fee) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 2), 0) AS week2,
+                COALESCE(SUM(annual_fee) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 3), 0) AS week3,
+                COALESCE(SUM(annual_fee) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 4), 0) AS week4,
+                COALESCE(SUM(annual_fee) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 5), 0) AS week5
+            FROM customer_contracts
+            WHERE handle_at BETWEEN $1 AND $2
+            GROUP BY month
+            ORDER BY month;",
+            start_date.and_utc(),
+            end_date.and_utc()
+        )
+        .fetch_all(&db.pool)
+        .await?;
+
+        let dates = charts
+            .into_iter()
+            .map(|chart| MonthlyProductionChartDto {
+                month: chart.month.unwrap(),
+                week1: chart.week1.unwrap(),
+                week2: chart.week2.unwrap(),
+                week3: chart.week3.unwrap(),
+                week4: chart.week4.unwrap(),
+                week5: chart.week5.unwrap(),
+            })
+            .collect();
+
+        Ok(dates)
+    }
+
+    pub async fn get_monthly_production_value_chart_by_user_uuid(
+        db: &Database,
+        user_uuid: Uuid,
+        start_date: NaiveDateTime,
+        end_date: NaiveDateTime,
+    ) -> Result<Vec<MonthlyProductionChartDto>> {
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid))
+            .await?
+            .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
+
+        let charts = sqlx::query!(
+            "SELECT
+                CAST(EXTRACT(MONTH FROM handle_at) AS SMALLINT) AS month,
+                COALESCE(SUM(annual_fee) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 1), 0) AS week1,
+                COALESCE(SUM(annual_fee) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 2), 0) AS week2,
+                COALESCE(SUM(annual_fee) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 3), 0) AS week3,
+                COALESCE(SUM(annual_fee) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 4), 0) AS week4,
+                COALESCE(SUM(annual_fee) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 5), 0) AS week5
+            FROM customer_contracts
+            WHERE handle_at BETWEEN $2 AND $3 AND user_id = $1
+            GROUP BY month
+            ORDER BY month;",
+            user_id,
+            start_date.and_utc(),
+            end_date.and_utc()
+        )
+        .fetch_all(&db.pool)
+        .await?;
+
+        let dates = charts
+            .into_iter()
+            .map(|chart| MonthlyProductionChartDto {
+                month: chart.month.unwrap(),
+                week1: chart.week1.unwrap(),
+                week2: chart.week2.unwrap(),
+                week3: chart.week3.unwrap(),
+                week4: chart.week4.unwrap(),
+                week5: chart.week5.unwrap(),
+            })
+            .collect();
+
+        Ok(dates)
+    }
+
     pub async fn get_monthly_production_chart(
         db: &Database,
         start_date: NaiveDateTime,
