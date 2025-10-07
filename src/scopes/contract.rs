@@ -39,12 +39,20 @@ pub fn contract_scope() -> Scope {
             web::get().to(get_production_value),
         )
         .route(
+            "/chart/production/value",
+            web::get().to(get_self_production_value),
+        )
+        .route(
             "/chart/production/value/{user_uuid}",
             web::get().to(get_production_value_by_user_uuid),
         )
         .route(
             "/chart/production/count/get-all",
             web::get().to(get_production_count),
+        )
+        .route(
+            "/chart/production/count",
+            web::get().to(get_self_production_count),
         )
         .route(
             "/chart/production/count/{user_uuid}",
@@ -54,6 +62,7 @@ pub fn contract_scope() -> Scope {
             "/chart/portfolio/get-all",
             web::get().to(get_portfolio_chart),
         )
+        .route("/chart/portfolio", web::get().to(get_self_portfolio_chart))
         .route(
             "/chart/portfolio/{user_uuid}",
             web::get().to(get_portfolio_chart_by_user_uuid),
@@ -61,6 +70,10 @@ pub fn contract_scope() -> Scope {
         .route(
             "/chart/weekly/get-all",
             web::post().to(get_weekly_production_chart),
+        )
+        .route(
+            "/chart/weekly",
+            web::post().to(get_self_weekly_production_chart),
         )
         .route(
             "/chart/weekly/{user_uuid}",
@@ -71,12 +84,20 @@ pub fn contract_scope() -> Scope {
             web::post().to(get_monthly_production_value_chart),
         )
         .route(
+            "/chart/monthly/value",
+            web::post().to(get_self_monthly_production_value_chart),
+        )
+        .route(
             "/chart/monthly/value/{user_uuid}",
             web::post().to(get_monthly_production_value_chart_by_user_uuid),
         )
         .route(
             "/chart/monthly/production/get-all",
             web::post().to(get_monthly_production_chart),
+        )
+        .route(
+            "/chart/monthly/production",
+            web::post().to(get_self_monthly_production_chart),
         )
         .route(
             "/chart/monthly/production/{user_uuid}",
@@ -278,11 +299,31 @@ async fn get_production_value(
     }
 }
 
+async fn get_self_production_value(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+) -> impl Responder {
+    let user_uuid = User::get_uuid_by_id(&web_data.db, auth_token.id as i32)
+        .await
+        .unwrap()
+        .unwrap();
+
+    match Contract::get_production_value_by_user_uuid(&web_data.db, user_uuid).await {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
 async fn get_production_value_by_user_uuid(
     web_data: web::Data<WebData>,
-    _: AuthenticationToken,
+    auth_token: AuthenticationToken,
     user_uuid: web::Path<Uuid>,
 ) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
     match Contract::get_production_value_by_user_uuid(&web_data.db, user_uuid.into_inner()).await {
         Ok(chart) => HttpResponse::Ok().json(chart),
         Err(e) => ApiError::from(e).error_response(),
@@ -304,11 +345,31 @@ async fn get_production_count(
     }
 }
 
+async fn get_self_production_count(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+) -> impl Responder {
+    let user_uuid = User::get_uuid_by_id(&web_data.db, auth_token.id as i32)
+        .await
+        .unwrap()
+        .unwrap();
+
+    match Contract::get_production_count_by_user_uuid(&web_data.db, user_uuid).await {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
 async fn get_production_count_by_user_uuid(
     web_data: web::Data<WebData>,
-    _: AuthenticationToken,
+    auth_token: AuthenticationToken,
     user_uuid: web::Path<Uuid>,
 ) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
     match Contract::get_production_count_by_user_uuid(&web_data.db, user_uuid.into_inner()).await {
         Ok(chart) => HttpResponse::Ok().json(chart),
         Err(e) => ApiError::from(e).error_response(),
@@ -330,11 +391,31 @@ async fn get_portfolio_chart(
     }
 }
 
+async fn get_self_portfolio_chart(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+) -> impl Responder {
+    let user_uuid = User::get_uuid_by_id(&web_data.db, auth_token.id as i32)
+        .await
+        .unwrap()
+        .unwrap();
+
+    match Contract::get_portfolio_chart_by_user_uuid(&web_data.db, user_uuid).await {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
 async fn get_portfolio_chart_by_user_uuid(
     web_data: web::Data<WebData>,
-    _: AuthenticationToken,
+    auth_token: AuthenticationToken,
     user_uuid: web::Path<Uuid>,
 ) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
     match Contract::get_portfolio_chart_by_user_uuid(&web_data.db, user_uuid.into_inner()).await {
         Ok(chart) => HttpResponse::Ok().json(chart),
         Err(e) => ApiError::from(e).error_response(),
@@ -358,12 +439,40 @@ async fn get_weekly_production_chart(
     }
 }
 
+async fn get_self_weekly_production_chart(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    data: web::Json<ContractChartJson>,
+) -> impl Responder {
+    let user_uuid = User::get_uuid_by_id(&web_data.db, auth_token.id as i32)
+        .await
+        .unwrap()
+        .unwrap();
+
+    match Contract::get_weekly_production_chart_by_user_uuid(
+        &web_data.db,
+        user_uuid,
+        data.start_date,
+        data.end_date,
+    )
+    .await
+    {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
 async fn get_weekly_production_chart_by_user_uuid(
     web_data: web::Data<WebData>,
-    _: AuthenticationToken,
+    auth_token: AuthenticationToken,
     user_uuid: web::Path<Uuid>,
     data: web::Json<ContractChartJson>,
 ) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
     match Contract::get_weekly_production_chart_by_user_uuid(
         &web_data.db,
         user_uuid.into_inner(),
@@ -395,12 +504,40 @@ async fn get_monthly_production_value_chart(
     }
 }
 
+async fn get_self_monthly_production_value_chart(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    data: web::Json<ContractChartJson>,
+) -> impl Responder {
+    let user_uuid = User::get_uuid_by_id(&web_data.db, auth_token.id as i32)
+        .await
+        .unwrap()
+        .unwrap();
+
+    match Contract::get_monthly_production_value_chart_by_user_uuid(
+        &web_data.db,
+        user_uuid,
+        data.start_date,
+        data.end_date,
+    )
+    .await
+    {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
 async fn get_monthly_production_value_chart_by_user_uuid(
     web_data: web::Data<WebData>,
-    _: AuthenticationToken,
+    auth_token: AuthenticationToken,
     user_uuid: web::Path<Uuid>,
     data: web::Json<ContractChartJson>,
 ) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
     match Contract::get_monthly_production_value_chart_by_user_uuid(
         &web_data.db,
         user_uuid.into_inner(),
@@ -431,12 +568,40 @@ async fn get_monthly_production_chart(
     }
 }
 
+async fn get_self_monthly_production_chart(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    data: web::Json<ContractChartJson>,
+) -> impl Responder {
+    let user_uuid = User::get_uuid_by_id(&web_data.db, auth_token.id as i32)
+        .await
+        .unwrap()
+        .unwrap();
+
+    match Contract::get_monthly_production_chart_by_user_uuid(
+        &web_data.db,
+        user_uuid,
+        data.start_date,
+        data.end_date,
+    )
+    .await
+    {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
 async fn get_monthly_production_chart_by_user_uuid(
     web_data: web::Data<WebData>,
-    _: AuthenticationToken,
+    auth_token: AuthenticationToken,
     user_uuid: web::Path<Uuid>,
     data: web::Json<ContractChartJson>,
 ) -> impl Responder {
+    if let Err(e) = User::require_role(&web_data.db, UserRole::Manager, auth_token.id as i32).await
+    {
+        return ApiError::from(e).error_response();
+    }
+
     match Contract::get_monthly_production_chart_by_user_uuid(
         &web_data.db,
         user_uuid.into_inner(),

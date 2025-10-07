@@ -26,9 +26,14 @@ pub fn dates_scope() -> Scope {
         .route("/{date_uuid}/state", web::put().to(change_date_state))
         .route("/change/user", web::put().to(change_dates_handler))
         .route("/delete", web::delete().to(delete_dates))
+        // CHART API's
         .route(
             "/chart/is-completed/get-all",
             web::get().to(get_is_completed_chart),
+        )
+        .route(
+            "/chart/is-completed/",
+            web::get().to(get_self_is_completed_chart),
         )
         .route(
             "/chart/is-completed/{user_uuid}",
@@ -38,10 +43,12 @@ pub fn dates_scope() -> Scope {
             "/chart/meet-type/get-all",
             web::get().to(get_meet_type_chart),
         )
+        .route("/chart/meet-type/", web::get().to(get_self_meet_type_chart))
         .route(
             "/chart/meet-type/{user_uuid}",
             web::get().to(get_meet_type_chart_by_user_uuid),
         )
+        .route("/chart/weekly", web::post().to(get_self_dates_weekly_chart))
         .route(
             "/chart/weekly/get-all",
             web::post().to(get_dates_weekly_chart),
@@ -53,6 +60,10 @@ pub fn dates_scope() -> Scope {
         .route(
             "/chart/monthly/get-all",
             web::post().to(get_dates_monthly_chart),
+        )
+        .route(
+            "/chart/monthly",
+            web::post().to(get_self_dates_monthly_chart),
         )
         .route(
             "/chart/monthly/{user_uuid}",
@@ -249,6 +260,21 @@ async fn get_is_completed_chart(
     }
 }
 
+async fn get_self_is_completed_chart(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+) -> impl Responder {
+    let user_uuid = User::get_uuid_by_id(&web_data.db, auth_token.id as i32)
+        .await
+        .unwrap()
+        .unwrap();
+
+    match UserMeetDate::get_is_completed_chart_by_user_uuid(&web_data.db, user_uuid).await {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
 async fn get_is_completed_chart_by_user_uuid(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
@@ -277,6 +303,21 @@ async fn get_meet_type_chart(
     }
 
     match UserMeetDate::get_meet_type_chart(&web_data.db).await {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_self_meet_type_chart(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+) -> impl Responder {
+    let user_uuid = User::get_uuid_by_id(&web_data.db, auth_token.id as i32)
+        .await
+        .unwrap()
+        .unwrap();
+
+    match UserMeetDate::get_meet_type_chart_by_user_uuid(&web_data.db, user_uuid).await {
         Ok(chart) => HttpResponse::Ok().json(chart),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -320,6 +361,29 @@ async fn get_dates_weekly_chart(
     }
 }
 
+async fn get_self_dates_weekly_chart(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    data: web::Json<DateChartJson>,
+) -> impl Responder {
+    let user_uuid = User::get_uuid_by_id(&web_data.db, auth_token.id as i32)
+        .await
+        .unwrap()
+        .unwrap();
+
+    match UserMeetDate::get_dates_weekly_chart_by_user_uuid(
+        &web_data.db,
+        user_uuid,
+        data.start_date,
+        data.end_date,
+    )
+    .await
+    {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
 async fn get_dates_weekly_chart_by_user_uuid(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
@@ -355,6 +419,29 @@ async fn get_dates_monthly_chart(
     }
 
     match UserMeetDate::get_dates_monthly_chart(&web_data.db, data.start_date, data.end_date).await
+    {
+        Ok(chart) => HttpResponse::Ok().json(chart),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn get_self_dates_monthly_chart(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    data: web::Json<DateChartJson>,
+) -> impl Responder {
+    let user_uuid = User::get_uuid_by_id(&web_data.db, auth_token.id as i32)
+        .await
+        .unwrap()
+        .unwrap();
+
+    match UserMeetDate::get_dates_monthly_chart_by_user_uuid(
+        &web_data.db,
+        user_uuid,
+        data.start_date,
+        data.end_date,
+    )
+    .await
     {
         Ok(chart) => HttpResponse::Ok().json(chart),
         Err(e) => ApiError::from(e).error_response(),
