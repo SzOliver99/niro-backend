@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                COALESCE(COUNT(*), 0) as production\n            FROM customer_contracts\n            WHERE user_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "production",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "0b543c462d0a5cc9679f79b68e41622183bd0ad52e9e158a89a5f16aee56e9a5"
+}

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                COALESCE(SUM(annual_fee), 0) as production_value\n            FROM customer_contracts\n            WHERE user_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "production_value",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "45c5ee3c1cb54e343ac49f7a0d26a4bb7c15928d5ce355853fc57775c7fbe316"
+}

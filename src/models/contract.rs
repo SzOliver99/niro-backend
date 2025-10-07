@@ -405,6 +405,66 @@ impl Contract {
     }
 
     // CHART FUNCTIONS
+    pub async fn get_production_value(db: &Database) -> Result<i64> {
+        let chart = sqlx::query!(
+            "SELECT
+                COALESCE(SUM(annual_fee), 0) as production_value
+            FROM customer_contracts;"
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(chart.production_value.unwrap())
+    }
+
+    pub async fn get_production_value_by_user_uuid(db: &Database, user_uuid: Uuid) -> Result<i64> {
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid))
+            .await?
+            .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
+
+        let chart = sqlx::query!(
+            "SELECT
+                COALESCE(SUM(annual_fee), 0) as production_value
+            FROM customer_contracts
+            WHERE user_id = $1",
+            user_id
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(chart.production_value.unwrap())
+    }
+
+    pub async fn get_production_count(db: &Database) -> Result<i64> {
+        let chart = sqlx::query!(
+            "SELECT
+                COALESCE(COUNT(*), 0) as production
+            FROM customer_contracts;"
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(chart.production.unwrap())
+    }
+
+    pub async fn get_production_count_by_user_uuid(db: &Database, user_uuid: Uuid) -> Result<i64> {
+        let user_id = User::get_id_by_uuid(db, Some(user_uuid))
+            .await?
+            .ok_or_else(|| anyhow!("Felhasználó nem található!"))?;
+
+        let chart = sqlx::query!(
+            "SELECT
+                COALESCE(COUNT(*), 0) as production
+            FROM customer_contracts
+            WHERE user_id = $1",
+            user_id
+        )
+        .fetch_one(&db.pool)
+        .await?;
+
+        Ok(chart.production.unwrap())
+    }
+
     pub async fn get_portfolio_chart(db: &Database) -> Result<PortfolioDto> {
         let chart = sqlx::query!(
             "SELECT
