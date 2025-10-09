@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n             CASE\n                WHEN u.user_role = 'Leader' THEN (\n                    SELECT COALESCE(SUM(cc.annual_fee), 0)\n                    FROM customer_contracts cc\n                )\n                WHEN u.user_role = 'Manager' THEN (\n                    SELECT COALESCE(SUM(cc.annual_fee), 0)\n                    FROM customer_contracts cc\n                    JOIN users sub ON sub.id = cc.user_id\n                    WHERE sub.manager_id = u.id OR sub.id = u.id\n                )\n                ELSE 0\n             END AS production_value\n            FROM users u\n            WHERE u.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "production_value",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ceb81bb3e828352bd6a37fe6a6ddeba66c60b880bd234c5da49ac6ad12fc024d"
+}

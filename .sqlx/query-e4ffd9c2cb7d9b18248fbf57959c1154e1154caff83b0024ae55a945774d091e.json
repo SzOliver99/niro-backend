@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT u.uuid, ui.full_name, u.user_role\n                     FROM users u\n                     JOIN user_info ui ON ui.user_id = u.id\n                     WHERE u.id = $1 OR u.manager_id = $1 AND (\n                        ($2 = 'Leader' AND u.user_role = 'Leader')\n                        OR ($2 = 'Manager' AND u.user_role IN ('Manager', 'Leader'))\n                        OR ($2 = 'Any')\n                     )\n                     ORDER BY\n                        CASE WHEN u.id = $1 THEN 0 END,\n                        CASE u.user_role \n                            WHEN 'Leader' THEN 1\n                            WHEN 'Manager' THEN 2\n                            WHEN 'Agent' THEN 3\n                        END;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "full_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_role",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": [
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "e4ffd9c2cb7d9b18248fbf57959c1154e1154caff83b0024ae55a945774d091e"
+}

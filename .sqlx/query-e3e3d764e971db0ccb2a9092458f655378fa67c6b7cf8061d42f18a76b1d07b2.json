@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                COUNT(*) FILTER (WHERE meet_type = 'NeedsAssessment') AS needs_assessment,\n                COUNT(*) FILTER (WHERE meet_type = 'Consultation') AS consultation,\n                COUNT(*) FILTER (WHERE meet_type = 'Service') AS service,\n                COUNT(*) FILTER (WHERE meet_type = 'AnnualReview') AS annual_review\n            FROM users u\n            LEFT JOIN user_dates ud\n            ON (\n                u.user_role = 'Leader' OR (u.user_role = 'Manager' AND ud.user_id IN (\n                    SELECT id FROM users WHERE manager_id = u.id OR id = u.id\n                ))\n            )\n            WHERE u.id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "needs_assessment",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "consultation",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "service",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "annual_review",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "e3e3d764e971db0ccb2a9092458f655378fa67c6b7cf8061d42f18a76b1d07b2"
+}

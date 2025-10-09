@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n            CASE\n                WHEN u.user_role = 'Leader' THEN (\n                SELECT COALESCE(COUNT(*), 0)\n                FROM customer_contracts cc\n                )\n                WHEN u.user_role = 'Manager' THEN (\n                SELECT COALESCE(COUNT(*), 0)\n                FROM customer_contracts cc\n                JOIN users sub ON sub.id = cc.user_id\n                WHERE sub.manager_id = u.id OR sub.id = u.id\n                )\n                ELSE 0\n             END AS production_count\n            FROM users u\n            WHERE u.id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "production_count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "912d04a54add014c4af4d1de66824513f1228cb69d04fde0163c0417ad5225f4"
+}

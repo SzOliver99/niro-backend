@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                COUNT(*) FILTER (WHERE ud.is_completed = TRUE)  AS yes,\n                COUNT(*) FILTER (WHERE ud.is_completed = FALSE) AS no\n            FROM users u\n            LEFT JOIN user_dates ud\n            ON (\n                u.user_role = 'Leader' OR (u.user_role = 'Manager' AND ud.user_id IN (\n                    SELECT id FROM users WHERE manager_id = u.id OR id = u.id\n                ))\n            )\n            WHERE u.id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "yes",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "no",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "6e1d045072e9be93e503ad9e066bf5373ad2e4e66f605895df3d8abac09388e3"
+}

@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                COALESCE(SUM(CASE WHEN cc.contract_type = 'BonusLifeProgram' THEN 1 END), 0) AS bonus_life_program,\n                COALESCE(SUM(CASE WHEN cc.contract_type = 'LifeProgram' THEN 1 END), 0) AS life_program,\n                COALESCE(SUM(CASE WHEN cc.contract_type = 'AllianzCareNow' THEN 1 END), 0) AS allianz_care_now,\n                COALESCE(SUM(CASE WHEN cc.contract_type = 'HealthProgram' THEN 1 END), 0) AS health_program,\n                COALESCE(SUM(CASE WHEN cc.contract_type = 'MyhomeHomeInsurance' THEN 1 END), 0) AS myhome_home_insurance,\n                COALESCE(SUM(CASE WHEN cc.contract_type = 'MfoHomeInsurance' THEN 1 END), 0) AS mfo_home_insurance,\n                COALESCE(SUM(CASE WHEN cc.contract_type = 'CorporatePropertyInsurance' THEN 1 END), 0) AS corporate_property_insurance,\n                COALESCE(SUM(CASE WHEN cc.contract_type = 'Kgfb' THEN 1 END), 0) AS kgfb,\n                COALESCE(SUM(CASE WHEN cc.contract_type = 'Casco' THEN 1 END), 0) AS casco,\n                COALESCE(SUM(CASE WHEN cc.contract_type = 'TravelInsurance' THEN 1 END), 0) AS travel_insurance,\n                COALESCE(SUM(CASE WHEN cc.contract_type = 'CondominiumInsurance' THEN 1 END), 0) AS condominium_insurance,\n                COALESCE(SUM(CASE WHEN cc.contract_type = 'AgriculturalInsurance' THEN 1 END), 0) AS agricultural_insurance\n                FROM users u\n                LEFT JOIN customer_contracts cc\n                ON (\n                    u.user_role = 'Leader'\n                    OR (u.user_role = 'Manager' AND cc.user_id IN (\n                        SELECT id FROM users WHERE manager_id = u.id OR id = u.id\n                    ))\n                )\n                WHERE u.id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "bonus_life_program",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "life_program",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "allianz_care_now",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "health_program",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "myhome_home_insurance",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "mfo_home_insurance",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "corporate_property_insurance",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "kgfb",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "casco",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "travel_insurance",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 10,
+        "name": "condominium_insurance",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 11,
+        "name": "agricultural_insurance",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "4c4f03963b5814569f93aa7c5d1bbbc57628fad03f2fd782668bd0f7ee3e4d92"
+}

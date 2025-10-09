@@ -1,0 +1,60 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 1) AS monday,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 2) AS tuesday,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 3) AS wednesday,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 4) AS thursday,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 5) AS friday,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 6) AS saturday,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 0) AS sunday\n            FROM users u\n            LEFT JOIN customer_contracts cc\n            ON (\n                (u.user_role = 'Leader' OR (u.user_role = 'Manager' AND cc.user_id IN (\n                    SELECT id FROM users WHERE manager_id = u.id OR id = u.id\n                )))\n                AND cc.handle_at BETWEEN $2 AND $3\n            )\n            WHERE u.id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "monday",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "tuesday",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "wednesday",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "thursday",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "friday",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "saturday",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "sunday",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "8e4e567d3274fd562e2c11f6042495d23772bf95498dba9e7de46b144496b139"
+}

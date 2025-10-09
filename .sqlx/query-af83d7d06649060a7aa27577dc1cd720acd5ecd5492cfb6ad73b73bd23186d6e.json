@@ -1,0 +1,60 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM ud.meet_date) = 1) AS monday,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM ud.meet_date) = 2) AS tuesday,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM ud.meet_date) = 3) AS wednesday,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM ud.meet_date) = 4) AS thursday,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM ud.meet_date) = 5) AS friday,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM ud.meet_date) = 6) AS saturday,\n                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM ud.meet_date) = 0) AS sunday\n            FROM users u\n            LEFT JOIN user_dates ud\n            ON (\n                (u.user_role = 'Leader' OR (u.user_role = 'Manager' AND ud.user_id IN (\n                    SELECT id FROM users WHERE manager_id = u.id OR id = u.id\n                )))\n                AND ud.meet_date BETWEEN $2 AND $3\n            )\n            WHERE u.id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "monday",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "tuesday",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "wednesday",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "thursday",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "friday",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "saturday",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "sunday",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Timestamp",
+        "Timestamp"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "af83d7d06649060a7aa27577dc1cd720acd5ecd5492cfb6ad73b73bd23186d6e"
+}
