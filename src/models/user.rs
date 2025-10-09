@@ -1,6 +1,6 @@
 use std::env;
 
-use anyhow::{anyhow, Ok, Result};
+use anyhow::{Ok, Result, anyhow};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use sqlx::{FromRow, prelude::Type};
@@ -470,7 +470,14 @@ impl User {
                         ($2 = 'Leader' AND u.user_role = 'Leader')
                         OR ($2 = 'Manager' AND u.user_role IN ('Manager', 'Leader'))
                         OR ($2 = 'Any')
-                     )",
+                     )
+                     ORDER BY
+                        CASE WHEN u.id = $1 THEN 0 END,
+                        CASE u.user_role 
+                            WHEN 'Leader' THEN 1
+                            WHEN 'Manager' THEN 2
+                            WHEN 'Agent' THEN 3
+                        END;",
                     user_id,
                     min_role
                 )

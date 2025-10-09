@@ -405,11 +405,25 @@ impl Contract {
     }
 
     // CHART FUNCTIONS
-    pub async fn get_production_value(db: &Database) -> Result<i64> {
+    pub async fn get_production_value(db: &Database, user_id: i32) -> Result<i64> {
         let chart = sqlx::query!(
             "SELECT
-                COALESCE(SUM(annual_fee), 0) as production_value
-            FROM customer_contracts;"
+             CASE
+                WHEN u.user_role = 'Leader' THEN (
+                    SELECT COALESCE(SUM(cc.annual_fee), 0)
+                    FROM customer_contracts cc
+                )
+                WHEN u.user_role = 'Manager' THEN (
+                    SELECT COALESCE(SUM(cc.annual_fee), 0)
+                    FROM customer_contracts cc
+                    JOIN users sub ON sub.id = cc.user_id
+                    WHERE sub.manager_id = u.id OR sub.id = u.id
+                )
+                ELSE 0
+             END AS production_value
+            FROM users u
+            WHERE u.id = $1",
+            user_id
         )
         .fetch_one(&db.pool)
         .await?;
@@ -435,16 +449,30 @@ impl Contract {
         Ok(chart.production_value.unwrap())
     }
 
-    pub async fn get_production_count(db: &Database) -> Result<i64> {
+    pub async fn get_production_count(db: &Database, user_id: i32) -> Result<i64> {
         let chart = sqlx::query!(
             "SELECT
-                COALESCE(COUNT(*), 0) as production
-            FROM customer_contracts;"
+            CASE
+                WHEN u.user_role = 'Leader' THEN (
+                SELECT COALESCE(COUNT(*), 0)
+                FROM customer_contracts cc
+                )
+                WHEN u.user_role = 'Manager' THEN (
+                SELECT COALESCE(COUNT(*), 0)
+                FROM customer_contracts cc
+                JOIN users sub ON sub.id = cc.user_id
+                WHERE sub.manager_id = u.id OR sub.id = u.id
+                )
+                ELSE 0
+             END AS production_count
+            FROM users u
+            WHERE u.id = $1;",
+            user_id
         )
         .fetch_one(&db.pool)
         .await?;
 
-        Ok(chart.production.unwrap())
+        Ok(chart.production_count.unwrap())
     }
 
     pub async fn get_production_count_by_user_uuid(db: &Database, user_uuid: Uuid) -> Result<i64> {
@@ -465,22 +493,31 @@ impl Contract {
         Ok(chart.production.unwrap())
     }
 
-    pub async fn get_portfolio_chart(db: &Database) -> Result<PortfolioDto> {
+    pub async fn get_portfolio_chart(db: &Database, user_id: i32) -> Result<PortfolioDto> {
         let chart = sqlx::query!(
             "SELECT
-                COUNT(*) FILTER (WHERE contract_type = 'BonusLifeProgram') AS bonus_life_program,
-                COUNT(*) FILTER (WHERE contract_type = 'LifeProgram') AS life_program,
-                COUNT(*) FILTER (WHERE contract_type = 'AllianzCareNow') AS allianz_care_now,
-                COUNT(*) FILTER (WHERE contract_type = 'HealthProgram') AS health_program,
-                COUNT(*) FILTER (WHERE contract_type = 'MyhomeHomeInsurance') AS myhome_home_insurance,
-                COUNT(*) FILTER (WHERE contract_type = 'MfoHomeInsurance') AS mfo_home_insurance,
-                COUNT(*) FILTER (WHERE contract_type = 'CorporatePropertyInsurance') AS corporate_property_insurance,
-                COUNT(*) FILTER (WHERE contract_type = 'Kgfb') AS kgfb,
-                COUNT(*) FILTER (WHERE contract_type = 'Casco') AS casco,
-                COUNT(*) FILTER (WHERE contract_type = 'TravelInsurance') AS travel_insurance,
-                COUNT(*) FILTER (WHERE contract_type = 'CondominiumInsurance') AS condominium_insurance,
-                COUNT(*) FILTER (WHERE contract_type = 'AgriculturalInsurance') AS agricultural_insurance
-            FROM customer_contracts;"
+                COALESCE(SUM(CASE WHEN cc.contract_type = 'BonusLifeProgram' THEN 1 END), 0) AS bonus_life_program,
+                COALESCE(SUM(CASE WHEN cc.contract_type = 'LifeProgram' THEN 1 END), 0) AS life_program,
+                COALESCE(SUM(CASE WHEN cc.contract_type = 'AllianzCareNow' THEN 1 END), 0) AS allianz_care_now,
+                COALESCE(SUM(CASE WHEN cc.contract_type = 'HealthProgram' THEN 1 END), 0) AS health_program,
+                COALESCE(SUM(CASE WHEN cc.contract_type = 'MyhomeHomeInsurance' THEN 1 END), 0) AS myhome_home_insurance,
+                COALESCE(SUM(CASE WHEN cc.contract_type = 'MfoHomeInsurance' THEN 1 END), 0) AS mfo_home_insurance,
+                COALESCE(SUM(CASE WHEN cc.contract_type = 'CorporatePropertyInsurance' THEN 1 END), 0) AS corporate_property_insurance,
+                COALESCE(SUM(CASE WHEN cc.contract_type = 'Kgfb' THEN 1 END), 0) AS kgfb,
+                COALESCE(SUM(CASE WHEN cc.contract_type = 'Casco' THEN 1 END), 0) AS casco,
+                COALESCE(SUM(CASE WHEN cc.contract_type = 'TravelInsurance' THEN 1 END), 0) AS travel_insurance,
+                COALESCE(SUM(CASE WHEN cc.contract_type = 'CondominiumInsurance' THEN 1 END), 0) AS condominium_insurance,
+                COALESCE(SUM(CASE WHEN cc.contract_type = 'AgriculturalInsurance' THEN 1 END), 0) AS agricultural_insurance
+                FROM users u
+                LEFT JOIN customer_contracts cc
+                ON (
+                    u.user_role = 'Leader'
+                    OR (u.user_role = 'Manager' AND cc.user_id IN (
+                        SELECT id FROM users WHERE manager_id = u.id OR id = u.id
+                    ))
+                )
+                WHERE u.id = $1;",
+            user_id
         )
         .fetch_one(&db.pool)
         .await?;
@@ -548,6 +585,7 @@ impl Contract {
 
     pub async fn get_weekly_production_chart(
         db: &Database,
+        user_id: i32,
         start_date: NaiveDateTime,
         end_date: NaiveDateTime,
     ) -> Result<WeeklyProductionChartDto> {
@@ -560,8 +598,16 @@ impl Contract {
                 COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 5) AS friday,
                 COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 6) AS saturday,
                 COUNT(*) FILTER (WHERE EXTRACT(DOW FROM handle_at) = 0) AS sunday
-            FROM customer_contracts
-            WHERE handle_at BETWEEN $1 AND $2",
+            FROM users u
+            LEFT JOIN customer_contracts cc
+            ON (
+                (u.user_role = 'Leader' OR (u.user_role = 'Manager' AND cc.user_id IN (
+                    SELECT id FROM users WHERE manager_id = u.id OR id = u.id
+                )))
+                AND cc.handle_at BETWEEN $2 AND $3
+            )
+            WHERE u.id = $1;",
+            user_id,
             start_date.and_utc(),
             end_date.and_utc()
         )
@@ -620,21 +666,29 @@ impl Contract {
 
     pub async fn get_monthly_production_value_chart(
         db: &Database,
+        user_id: i32,
         start_date: NaiveDateTime,
         end_date: NaiveDateTime,
     ) -> Result<Vec<MonthlyProductionChartDto>> {
         let charts = sqlx::query!(
             "SELECT
-                CAST(EXTRACT(MONTH FROM handle_at) AS SMALLINT) AS month,
+                CAST(EXTRACT(MONTH FROM cc.handle_at) AS SMALLINT) AS month,
                 COALESCE(SUM(annual_fee) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 1), 0) AS week1,
                 COALESCE(SUM(annual_fee) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 2), 0) AS week2,
                 COALESCE(SUM(annual_fee) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 3), 0) AS week3,
                 COALESCE(SUM(annual_fee) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 4), 0) AS week4,
                 COALESCE(SUM(annual_fee) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 5), 0) AS week5
-            FROM customer_contracts
-            WHERE handle_at BETWEEN $1 AND $2
-            GROUP BY month
-            ORDER BY month;",
+            FROM users u
+            LEFT JOIN customer_contracts cc
+            ON (
+                (u.user_role = 'Leader' OR (u.user_role = 'Manager' AND cc.user_id IN (
+                    SELECT id FROM users WHERE manager_id = u.id OR id = u.id
+                )))
+                AND cc.handle_at BETWEEN $2 AND $3
+            )
+            WHERE u.id = $1
+            GROUP BY month;",
+            user_id,
             start_date.and_utc(),
             end_date.and_utc()
         )
@@ -702,21 +756,29 @@ impl Contract {
 
     pub async fn get_monthly_production_chart(
         db: &Database,
+        user_id: i32,
         start_date: NaiveDateTime,
         end_date: NaiveDateTime,
     ) -> Result<Vec<MonthlyProductionChartDto>> {
         let charts = sqlx::query!(
             "SELECT
-                CAST(EXTRACT(MONTH FROM handle_at) as SMALLINT) AS month,
+                CAST(EXTRACT(MONTH FROM cc.handle_at) AS SMALLINT) AS month,
                 COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 1) AS week1,
                 COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 2) AS week2,
                 COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 3) AS week3,
                 COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 4) AS week4,
                 COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM handle_at) - EXTRACT(WEEK FROM DATE_TRUNC('month', handle_at)) + 1 = 5) AS week5
-            FROM customer_contracts
-            WHERE handle_at BETWEEN $1 AND $2
-            GROUP BY month
-            ORDER BY month;",
+            FROM users u
+            LEFT JOIN customer_contracts cc
+            ON (
+                (u.user_role = 'Leader' OR (u.user_role = 'Manager' AND cc.user_id IN (
+                    SELECT id FROM users WHERE manager_id = u.id OR id = u.id
+                )))
+                AND cc.handle_at BETWEEN $2 AND $3
+            )
+            WHERE u.id = $1
+            GROUP BY month;",
+            user_id,
             start_date.and_utc(),
             end_date.and_utc()
         )

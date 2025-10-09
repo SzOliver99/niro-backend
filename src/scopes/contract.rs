@@ -293,7 +293,7 @@ async fn get_production_value(
         return ApiError::from(e).error_response();
     }
 
-    match Contract::get_production_value(&web_data.db).await {
+    match Contract::get_production_value(&web_data.db, auth_token.id as i32).await {
         Ok(chart) => HttpResponse::Ok().json(chart),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -339,7 +339,7 @@ async fn get_production_count(
         return ApiError::from(e).error_response();
     }
 
-    match Contract::get_production_count(&web_data.db).await {
+    match Contract::get_production_count(&web_data.db, auth_token.id as i32).await {
         Ok(chart) => HttpResponse::Ok().json(chart),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -385,7 +385,7 @@ async fn get_portfolio_chart(
         return ApiError::from(e).error_response();
     }
 
-    match Contract::get_portfolio_chart(&web_data.db).await {
+    match Contract::get_portfolio_chart(&web_data.db, auth_token.id as i32).await {
         Ok(chart) => HttpResponse::Ok().json(chart),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -432,7 +432,13 @@ async fn get_weekly_production_chart(
         return ApiError::from(e).error_response();
     }
 
-    match Contract::get_weekly_production_chart(&web_data.db, data.start_date, data.end_date).await
+    match Contract::get_weekly_production_chart(
+        &web_data.db,
+        auth_token.id as i32,
+        data.start_date,
+        data.end_date,
+    )
+    .await
     {
         Ok(chart) => HttpResponse::Ok().json(chart),
         Err(e) => ApiError::from(e).error_response(),
@@ -496,8 +502,13 @@ async fn get_monthly_production_value_chart(
         return ApiError::from(e).error_response();
     }
 
-    match Contract::get_monthly_production_value_chart(&web_data.db, data.start_date, data.end_date)
-        .await
+    match Contract::get_monthly_production_value_chart(
+        &web_data.db,
+        auth_token.id as i32,
+        data.start_date,
+        data.end_date,
+    )
+    .await
     {
         Ok(chart) => HttpResponse::Ok().json(chart),
         Err(e) => ApiError::from(e).error_response(),
@@ -561,7 +572,13 @@ async fn get_monthly_production_chart(
         return ApiError::from(e).error_response();
     }
 
-    match Contract::get_monthly_production_chart(&web_data.db, data.start_date, data.end_date).await
+    match Contract::get_monthly_production_chart(
+        &web_data.db,
+        auth_token.id as i32,
+        data.start_date,
+        data.end_date,
+    )
+    .await
     {
         Ok(chart) => HttpResponse::Ok().json(chart),
         Err(e) => ApiError::from(e).error_response(),

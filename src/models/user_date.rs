@@ -247,12 +247,23 @@ impl UserMeetDate {
     }
 
     // CHART FUNCTIONS
-    pub async fn get_is_completed_chart(db: &Database) -> Result<IsCompletedChartDto> {
+    pub async fn get_is_completed_chart(
+        db: &Database,
+        user_id: i32,
+    ) -> Result<IsCompletedChartDto> {
         let chart = sqlx::query!(
             "SELECT
-                COUNT(*) FILTER (WHERE is_completed = TRUE)  AS yes,
-                COUNT(*) FILTER (WHERE is_completed = FALSE) AS no
-            FROM user_dates;"
+                COUNT(*) FILTER (WHERE ud.is_completed = TRUE)  AS yes,
+                COUNT(*) FILTER (WHERE ud.is_completed = FALSE) AS no
+            FROM users u
+            LEFT JOIN user_dates ud
+            ON (
+                u.user_role = 'Leader' OR (u.user_role = 'Manager' AND ud.user_id IN (
+                    SELECT id FROM users WHERE manager_id = u.id OR id = u.id
+                ))
+            )
+            WHERE u.id = $1;",
+            user_id
         )
         .fetch_one(&db.pool)
         .await?;
@@ -287,14 +298,22 @@ impl UserMeetDate {
         })
     }
 
-    pub async fn get_meet_type_chart(db: &Database) -> Result<MeetTypeChartDto> {
+    pub async fn get_meet_type_chart(db: &Database, user_id: i32) -> Result<MeetTypeChartDto> {
         let chart = sqlx::query!(
             "SELECT
                 COUNT(*) FILTER (WHERE meet_type = 'NeedsAssessment') AS needs_assessment,
                 COUNT(*) FILTER (WHERE meet_type = 'Consultation') AS consultation,
                 COUNT(*) FILTER (WHERE meet_type = 'Service') AS service,
                 COUNT(*) FILTER (WHERE meet_type = 'AnnualReview') AS annual_review
-            FROM user_dates;"
+            FROM users u
+            LEFT JOIN user_dates ud
+            ON (
+                u.user_role = 'Leader' OR (u.user_role = 'Manager' AND ud.user_id IN (
+                    SELECT id FROM users WHERE manager_id = u.id OR id = u.id
+                ))
+            )
+            WHERE u.id = $1;",
+            user_id
         )
         .fetch_one(&db.pool)
         .await?;
@@ -337,20 +356,29 @@ impl UserMeetDate {
 
     pub async fn get_dates_weekly_chart(
         db: &Database,
+        user_id: i32,
         start_date: NaiveDateTime,
         end_date: NaiveDateTime,
     ) -> Result<DatesWeeklyChartDto> {
         let chart = sqlx::query!(
             "SELECT
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 1) AS monday,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 2) AS tuesday,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 3) AS wednesday,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 4) AS thursday,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 5) AS friday,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 6) AS saturday,
-                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM meet_date) = 0) AS sunday
-            FROM user_dates
-            WHERE meet_date BETWEEN $1 AND $2",
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM ud.meet_date) = 1) AS monday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM ud.meet_date) = 2) AS tuesday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM ud.meet_date) = 3) AS wednesday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM ud.meet_date) = 4) AS thursday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM ud.meet_date) = 5) AS friday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM ud.meet_date) = 6) AS saturday,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM ud.meet_date) = 0) AS sunday
+            FROM users u
+            LEFT JOIN user_dates ud
+            ON (
+                (u.user_role = 'Leader' OR (u.user_role = 'Manager' AND ud.user_id IN (
+                    SELECT id FROM users WHERE manager_id = u.id OR id = u.id
+                )))
+                AND ud.meet_date BETWEEN $2 AND $3
+            )
+            WHERE u.id = $1;",
+            user_id,
             start_date,
             end_date
         )
@@ -409,6 +437,7 @@ impl UserMeetDate {
 
     pub async fn get_dates_monthly_chart(
         db: &Database,
+        user_id: i32,
         start_date: NaiveDateTime,
         end_date: NaiveDateTime,
     ) -> Result<Vec<DatesMonthlyChartDto>> {
@@ -420,10 +449,17 @@ impl UserMeetDate {
                 COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM meet_date) - EXTRACT(WEEK FROM DATE_TRUNC('month', meet_date)) + 1 = 3) AS week3,
                 COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM meet_date) - EXTRACT(WEEK FROM DATE_TRUNC('month', meet_date)) + 1 = 4) AS week4,
                 COUNT(*) FILTER (WHERE EXTRACT(WEEK FROM meet_date) - EXTRACT(WEEK FROM DATE_TRUNC('month', meet_date)) + 1 = 5) AS week5
-            FROM user_dates
-            WHERE meet_date BETWEEN $1 AND $2
-            GROUP BY month
-            ORDER BY month;",
+            FROM users u
+            LEFT JOIN user_dates ud
+            ON (
+                (u.user_role = 'Leader' OR (u.user_role = 'Manager' AND ud.user_id IN (
+                    SELECT id FROM users WHERE manager_id = u.id OR id = u.id
+                )))
+                AND ud.meet_date BETWEEN $2 AND $3
+            )
+            WHERE u.id = $1
+            GROUP BY month;",
+            user_id,
             start_date,
             end_date
         )

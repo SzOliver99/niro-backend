@@ -254,7 +254,7 @@ async fn get_is_completed_chart(
         return ApiError::from(e).error_response();
     }
 
-    match UserMeetDate::get_is_completed_chart(&web_data.db).await {
+    match UserMeetDate::get_is_completed_chart(&web_data.db, auth_token.id as i32).await {
         Ok(chart) => HttpResponse::Ok().json(chart),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -302,7 +302,7 @@ async fn get_meet_type_chart(
         return ApiError::from(e).error_response();
     }
 
-    match UserMeetDate::get_meet_type_chart(&web_data.db).await {
+    match UserMeetDate::get_meet_type_chart(&web_data.db, auth_token.id as i32).await {
         Ok(chart) => HttpResponse::Ok().json(chart),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -355,7 +355,14 @@ async fn get_dates_weekly_chart(
         return ApiError::from(e).error_response();
     }
 
-    match UserMeetDate::get_dates_weekly_chart(&web_data.db, data.start_date, data.end_date).await {
+    match UserMeetDate::get_dates_weekly_chart(
+        &web_data.db,
+        auth_token.id as i32,
+        data.start_date,
+        data.end_date,
+    )
+    .await
+    {
         Ok(chart) => HttpResponse::Ok().json(chart),
         Err(e) => ApiError::from(e).error_response(),
     }
@@ -418,7 +425,13 @@ async fn get_dates_monthly_chart(
         return ApiError::from(e).error_response();
     }
 
-    match UserMeetDate::get_dates_monthly_chart(&web_data.db, data.start_date, data.end_date).await
+    match UserMeetDate::get_dates_monthly_chart(
+        &web_data.db,
+        auth_token.id as i32,
+        data.start_date,
+        data.end_date,
+    )
+    .await
     {
         Ok(chart) => HttpResponse::Ok().json(chart),
         Err(e) => ApiError::from(e).error_response(),
