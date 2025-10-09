@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE customer_recommendations\n             SET user_id = $2\n             WHERE uuid = ANY($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0a76c9034486026c65e8b0c94df0118353a56f47f0a03f1b43dc4d3027ca99e7"
+}

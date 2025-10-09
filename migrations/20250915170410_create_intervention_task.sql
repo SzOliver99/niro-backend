@@ -12,5 +12,5 @@ CREATE TABLE IF NOT EXISTS customer_intervention_tasks (
 	customer_id INT NOT NULL REFERENCES customers (id) ON DELETE CASCADE,
 	user_id INT REFERENCES users (id) ON DELETE SET NULL,
 	created_by VARCHAR(254) NOT NULL,
-	CONSTRAINT task_status_check CHECK ("status" IN ('PaymentPromise', 'Processed', 'Nonpayment', 'PendingDeletion'))
+	CONSTRAINT task_status_check CHECK ("status" IN ('Pending', 'PaymentPromise', 'Processed', 'Nonpayment', 'PendingDeletion'))
 );

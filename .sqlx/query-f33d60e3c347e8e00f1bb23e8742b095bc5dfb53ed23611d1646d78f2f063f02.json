@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO customer_recommendations(full_name, phone_number_enc, phone_number_nonce, phone_number_hash, city_enc, city_nonce, referral_name, user_id, created_by)\n             VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)\n             RETURNING uuid",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Bytea",
+        "Bytea",
+        "Bytea",
+        "Bytea",
+        "Bytea",
+        "Varchar",
+        "Int4",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "f33d60e3c347e8e00f1bb23e8742b095bc5dfb53ed23611d1646d78f2f063f02"
+}
