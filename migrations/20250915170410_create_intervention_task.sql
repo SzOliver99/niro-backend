@@ -1,4 +1,3 @@
--- Add migration script here
 CREATE TABLE IF NOT EXISTS customer_intervention_tasks (
 	id SERIAL PRIMARY KEY,
 	UUID UUID UNIQUE DEFAULT uuid_generate_v4 (),

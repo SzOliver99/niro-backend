@@ -56,6 +56,7 @@ impl Server {
                 .service(scopes::contract::contract_scope())
                 .service(scopes::intervention_task::intervention_task_scope())
                 .service(scopes::recommendation::recommendation_scope())
+                .service(scopes::recruitment::recruitment_scope())
         })
         .bind(("0.0.0.0", port))?
         .run()

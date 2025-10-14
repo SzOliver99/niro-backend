@@ -1,4 +1,3 @@
--- Add migration script here
 CREATE TABLE IF NOT EXISTS user_dates (
 	id SERIAL PRIMARY KEY,
 	UUID UUID UNIQUE DEFAULT uuid_generate_v4 (),

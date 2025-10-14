@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT uuid, full_name, email_enc, email_nonce, phone_number_enc, phone_number_nonce, created_by\n             FROM recruitment\n             ORDER BY full_name ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "full_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "email_enc",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 3,
+        "name": "email_nonce",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 4,
+        "name": "phone_number_enc",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 5,
+        "name": "phone_number_nonce",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_by",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "62b856a424a2b628786aff69c6f28104bde8cff27dbb2d8684c70ec65b9d00ae"
+}

@@ -1,4 +1,3 @@
--- Add migration script here
 CREATE TABLE IF NOT EXISTS users (
 	id SERIAL PRIMARY KEY,
 	UUID UUID UNIQUE DEFAULT uuid_generate_v4 (),
