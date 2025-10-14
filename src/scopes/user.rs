@@ -129,7 +129,11 @@ async fn modify_user_info(
     auth_token: AuthenticationToken,
     data: web::Json<ModifyUserInfoJson>,
 ) -> impl Responder {
-    let user_uuid = User::get_uuid_by_id(&web_data.db, auth_token.id as i32).await.unwrap().unwrap();
+    let user_uuid = match User::get_uuid_by_id(&web_data.db, auth_token.id as i32).await {
+        Ok(Some(uuid)) => uuid,
+        Ok(None) => return ApiError::NotFound("User not found".to_string()).error_response(),
+        Err(e) => return ApiError::from(e).error_response(),
+    };
 
     let user = User {
         email: Some(data.email.clone()),
