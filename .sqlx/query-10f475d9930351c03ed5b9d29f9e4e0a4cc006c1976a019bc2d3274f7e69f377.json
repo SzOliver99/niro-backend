@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE user_info\n             SET full_name = $2,\n                 phone_number = $3,\n                 hufa_code = COALESCE($4, hufa_code),\n                 agent_code = COALESCE($5, agent_code)\n             WHERE user_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Varchar",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "10f475d9930351c03ed5b9d29f9e4e0a4cc006c1976a019bc2d3274f7e69f377"
+}
