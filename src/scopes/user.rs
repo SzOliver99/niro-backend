@@ -23,7 +23,8 @@ pub fn user_scope() -> Scope {
         .route("/managers", web::post().to(get_managers))
         .route("/manager", web::put().to(modify_user_manager))
         .route("/info", web::get().to(get_user_informations_by_id))
-        .route("/{user_uuid}/info", web::put().to(modify_user_info))
+        .route("/info", web::put().to(modify_user_info))
+        .route("/{user_uuid}/info", web::put().to(modify_user_info_by_uuid))
         .route("/delete/{user_uuid}", web::delete().to(delete_user))
         .route("/protected", web::get().to(protected_route))
 }
@@ -124,6 +125,25 @@ struct ModifyUserInfoJson {
     info: UserInfo,
 }
 async fn modify_user_info(
+    web_data: web::Data<WebData>,
+    auth_token: AuthenticationToken,
+    data: web::Json<ModifyUserInfoJson>,
+) -> impl Responder {
+    let user_uuid = User::get_uuid_by_id(&web_data.db, auth_token.id as i32).await.unwrap().unwrap();
+
+    let user = User {
+        email: Some(data.email.clone()),
+        info: data.info.clone(),
+        ..Default::default()
+    };
+
+    match User::modify_info(&web_data.db, user_uuid, user).await {
+        Ok(_) => HttpResponse::Ok().json("Sikeresen megváltoztattad az adataidat!"),
+        Err(e) => ApiError::from(e).error_response(),
+    }
+}
+
+async fn modify_user_info_by_uuid(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
     data: web::Json<ModifyUserInfoJson>,

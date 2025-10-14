@@ -319,7 +319,10 @@ impl User {
 
         sqlx::query!(
             "UPDATE user_info
-             SET full_name = $2, phone_number = $3, hufa_code = $4, agent_code = $5
+             SET full_name = $2,
+                 phone_number = $3,
+                 hufa_code = COALESCE($4, hufa_code),
+                 agent_code = COALESCE($5, agent_code)
              WHERE user_id = $1",
             user_id,
             user.info.full_name,
