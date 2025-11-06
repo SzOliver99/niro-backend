@@ -63,7 +63,7 @@ async fn create_user(
     };
 
     match User::create(&web_data.db, new_user).await {
-        Ok(_) => HttpResponse::Created().json("Registration successful!"),
+        Ok(_) => HttpResponse::Created().json("Sikeresen létrehoztad a felhasználót!"),
         Err(e) => ApiError::from(e).error_response(),
     }
 }
@@ -131,7 +131,9 @@ async fn modify_user_info(
 ) -> impl Responder {
     let user_uuid = match User::get_uuid_by_id(&web_data.db, auth_token.id as i32).await {
         Ok(Some(uuid)) => uuid,
-        Ok(None) => return ApiError::NotFound("User not found".to_string()).error_response(),
+        Ok(None) => {
+            return ApiError::NotFound("Felhasználó nem találtható".to_string()).error_response();
+        }
         Err(e) => return ApiError::from(e).error_response(),
     };
 

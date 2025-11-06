@@ -115,6 +115,7 @@ impl User {
 
         let hashed_password = password_hashing::hash_password(&new_user.password.unwrap());
 
+        println!("Manager UUID: {:?}", new_user.manager_uuid);
         let mut tx = db.pool.begin().await?;
         let user_id = sqlx::query!(
             "INSERT INTO users(email, username, password, user_role, manager_id) VALUES($1, $2, $3, $4, $5) RETURNING id",
