@@ -15,7 +15,10 @@ pub fn recruitment_scope() -> Scope {
         .route("/create", web::post().to(create_recruitment))
         .route("/modify", web::put().to(modify_recruitment))
         .route("/get-all", web::get().to(get_recruitments))
-        .route("/{recruitment_uuid}", web::get().to(get_recruitment_by_uuid))
+        .route(
+            "/{recruitment_uuid}",
+            web::get().to(get_recruitment_by_uuid),
+        )
         .route("/{recruitment_uuid}", web::delete().to(delete_recruitments))
 }
 
@@ -24,6 +27,7 @@ struct CreateRecruitmentJson {
     full_name: String,
     email: String,
     phone_number: String,
+    description: String,
     created_by: String,
 }
 async fn create_recruitment(
@@ -34,6 +38,7 @@ async fn create_recruitment(
         full_name: Some(data.full_name.clone()),
         email: Some(data.email.clone()),
         phone_number: Some(data.phone_number.clone()),
+        description: Some(data.description.clone()),
         created_by: Some(data.created_by.clone()),
         ..Default::default()
     };
@@ -50,6 +55,7 @@ struct ModifyRecruitmentJson {
     full_name: Option<String>,
     email: Option<String>,
     phone_number: Option<String>,
+    description: Option<String>,
     created_by: Option<String>,
 }
 async fn modify_recruitment(
@@ -61,6 +67,7 @@ async fn modify_recruitment(
         full_name: data.full_name.clone(),
         email: data.email.clone(),
         phone_number: data.phone_number.clone(),
+        description: data.description.clone(),
         created_by: data.created_by.clone(),
         ..Default::default()
     };
@@ -79,10 +86,7 @@ async fn modify_recruitment(
     }
 }
 
-async fn get_recruitments(
-    web_data: web::Data<WebData>,
-    _: AuthenticationToken,
-) -> impl Responder {
+async fn get_recruitments(web_data: web::Data<WebData>, _: AuthenticationToken) -> impl Responder {
     match Recruitment::get_all(&web_data.db, &web_data.key).await {
         Ok(list) => HttpResponse::Ok().json(list),
         Err(e) => ApiError::from(e).error_response(),
@@ -94,7 +98,8 @@ async fn get_recruitment_by_uuid(
     _: AuthenticationToken,
     recruitment_uuid: web::Path<Uuid>,
 ) -> impl Responder {
-    match Recruitment::get_by_uuid(&web_data.db, &web_data.key, recruitment_uuid.into_inner()).await {
+    match Recruitment::get_by_uuid(&web_data.db, &web_data.key, recruitment_uuid.into_inner()).await
+    {
         Ok(rec) => HttpResponse::Ok().json(rec),
         Err(e) => ApiError::from(e).error_response(),
     }

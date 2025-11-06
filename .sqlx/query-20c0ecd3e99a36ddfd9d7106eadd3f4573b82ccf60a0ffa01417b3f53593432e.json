@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT uuid, full_name, email_enc, email_nonce, phone_number_enc, phone_number_nonce, created_by\n             FROM recruitment\n             ORDER BY full_name ASC",
+  "query": "SELECT uuid, full_name, email_enc, email_nonce, phone_number_enc, phone_number_nonce, description, created_by\n             FROM recruitment\n             ORDER BY full_name ASC",
   "describe": {
     "columns": [
       {
@@ -35,6 +35,11 @@
       },
       {
         "ordinal": 6,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
         "name": "created_by",
         "type_info": "Varchar"
       }
@@ -49,8 +54,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "62b856a424a2b628786aff69c6f28104bde8cff27dbb2d8684c70ec65b9d00ae"
+  "hash": "20c0ecd3e99a36ddfd9d7106eadd3f4573b82ccf60a0ffa01417b3f53593432e"
 }

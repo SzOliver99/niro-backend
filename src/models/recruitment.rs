@@ -1,6 +1,6 @@
 use crate::utils::encrypt::HmacSecret;
 use crate::{database::Database, utils::encrypt};
-use anyhow::{anyhow, Ok, Result};
+use anyhow::{Ok, Result, anyhow};
 use chacha20poly1305::Key;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -13,6 +13,7 @@ pub struct Recruitment {
     pub full_name: Option<String>,
     pub email: Option<String>,
     pub phone_number: Option<String>,
+    pub description: Option<String>,
     pub created_by: Option<String>,
 }
 
@@ -58,8 +59,8 @@ impl Recruitment {
         let (phone_enc, phone_nonce) = encrypt::encrypt_value(key, phone);
 
         let row = sqlx::query!(
-            "INSERT INTO recruitment(full_name, email_enc, email_nonce, email_hash, phone_number_enc, phone_number_nonce, phone_number_hash, created_by)
-             VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+            "INSERT INTO recruitment(full_name, email_enc, email_nonce, email_hash, phone_number_enc, phone_number_nonce, phone_number_hash, description, created_by)
+             VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
              RETURNING uuid",
             recruitment.full_name,
             email_enc,
@@ -68,6 +69,7 @@ impl Recruitment {
             phone_enc,
             phone_nonce,
             phone_hash,
+            recruitment.description,
             recruitment.created_by
         )
         .fetch_one(&db.pool)
@@ -135,7 +137,7 @@ impl Recruitment {
 
     pub async fn get_all(db: &Database, key: &Key) -> Result<Vec<Recruitment>> {
         let rows = sqlx::query!(
-            "SELECT uuid, full_name, email_enc, email_nonce, phone_number_enc, phone_number_nonce, created_by
+            "SELECT uuid, full_name, email_enc, email_nonce, phone_number_enc, phone_number_nonce, description, created_by
              FROM recruitment
              ORDER BY full_name ASC"
         )
@@ -148,15 +150,24 @@ impl Recruitment {
                 uuid: row.uuid,
                 full_name: Some(row.full_name),
                 email: encrypt::decrypt_value(key, &row.email_enc, &row.email_nonce),
-                phone_number: encrypt::decrypt_value(key, &row.phone_number_enc, &row.phone_number_nonce),
+                phone_number: encrypt::decrypt_value(
+                    key,
+                    &row.phone_number_enc,
+                    &row.phone_number_nonce,
+                ),
+                description: Some(row.description),
                 created_by: Some(row.created_by),
             })
             .collect())
     }
 
-    pub async fn get_by_uuid(db: &Database, key: &Key, recruitment_uuid: Uuid) -> Result<Recruitment> {
+    pub async fn get_by_uuid(
+        db: &Database,
+        key: &Key,
+        recruitment_uuid: Uuid,
+    ) -> Result<Recruitment> {
         let row = sqlx::query!(
-            "SELECT uuid, full_name, email_enc, email_nonce, phone_number_enc, phone_number_nonce, created_by
+            "SELECT uuid, full_name, email_enc, email_nonce, phone_number_enc, phone_number_nonce, description, created_by
              FROM recruitment
              WHERE uuid = $1",
             recruitment_uuid
@@ -168,18 +179,20 @@ impl Recruitment {
             uuid: row.uuid,
             full_name: Some(row.full_name),
             email: encrypt::decrypt_value(key, &row.email_enc, &row.email_nonce),
-            phone_number: encrypt::decrypt_value(key, &row.phone_number_enc, &row.phone_number_nonce),
+            phone_number: encrypt::decrypt_value(
+                key,
+                &row.phone_number_enc,
+                &row.phone_number_nonce,
+            ),
+            description: Some(row.description),
             created_by: Some(row.created_by),
         })
     }
 
     pub async fn delete(db: &Database, recruitment_uuid: Uuid) -> Result<()> {
-        sqlx::query!(
-            "DELETE FROM recruitment WHERE uuid = $1",
-            &recruitment_uuid
-        )
-        .execute(&db.pool)
-        .await?;
+        sqlx::query!("DELETE FROM recruitment WHERE uuid = $1", &recruitment_uuid)
+            .execute(&db.pool)
+            .await?;
         Ok(())
     }
 }
