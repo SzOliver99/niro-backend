@@ -107,6 +107,7 @@ impl Recruitment {
         } else {
             Some(encrypt::hash_value(hmac_secret, &effective_phone))
         };
+        let description = updated.description.or(existing.description);
 
         sqlx::query!(
             "UPDATE recruitment
@@ -117,8 +118,9 @@ impl Recruitment {
                  phone_number_enc = $5,
                  phone_number_nonce = $6,
                  phone_number_hash = $7,
-                 created_by = $8
-             WHERE uuid = $9",
+                 description = $8,
+                 created_by = $9
+             WHERE uuid = $10",
             full_name,
             email_enc,
             email_nonce,
@@ -126,6 +128,7 @@ impl Recruitment {
             phone_enc,
             phone_nonce,
             phone_hash_opt,
+            description,
             created_by,
             recruitment_uuid
         )
