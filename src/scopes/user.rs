@@ -200,11 +200,12 @@ async fn modify_user_manager(
 async fn delete_user(
     web_data: web::Data<WebData>,
     auth_token: AuthenticationToken,
-    user_uuid: web::Json<Uuid>,
+    user_uuid: web::Path<Uuid>,
 ) -> impl Responder {
     if let Err(e) = User::require_role(&web_data.db, UserRole::Leader, auth_token.id as i32).await {
         return ApiError::from(e).error_response();
     }
+    println!("Törlendő user UUID: {:?}", user_uuid);
 
     match User::delete(&web_data.db, user_uuid.into_inner()).await {
         Ok(_) => HttpResponse::Ok().json("Sikeresen kitörölted a felhasználót!"),

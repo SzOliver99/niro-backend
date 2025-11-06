@@ -386,46 +386,6 @@ impl User {
         Ok(())
     }
 
-    // pub async fn list_contacts_paginated(
-    //     db: &Database,
-    //     user_id: i32,
-    //     limit: i64,
-    //     offset: i64,
-    // ) -> Result<Vec<LeadDto>> {
-    //     if !User::is_exists_by_id(db, user_id).await? {
-    //         return Err(anyhow!("Invalid user_id"));
-    //     }
-
-    //     let rows = sqlx::query!(
-    //         r#"
-    //         SELECT c.id, c.email, c.first_name, c.last_name, c.phone_number
-    //         FROM contacts c
-    //         JOIN users u ON u.id = c.user_id
-    //         WHERE c.user_id = $1
-    //         ORDER BY c.id
-    //         LIMIT $2 OFFSET $3
-    //         "#,
-    //         user_id,
-    //         limit,
-    //         offset
-    //     )
-    //     .fetch_all(&db.pool)
-    //     .await?;
-
-    //     let result: Vec<LeadDto> = rows
-    //         .into_iter()
-    //         .map(|r| LeadDto {
-    //             id: r.id,
-    //             email: r.email,
-    //             first_name: r.first_name,
-    //             last_name: r.last_name,
-    //             phone_number: r.phone_number,
-    //         })
-    //         .collect();
-
-    //     Ok(result)
-    // }
-
     pub async fn get_sub_users(db: &Database, user_id: i32, min_role: String) -> Result<Vec<User>> {
         let user_role = Self::get_role(db, user_id).await?;
 
